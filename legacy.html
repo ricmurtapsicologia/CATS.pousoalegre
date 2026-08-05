@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#17324d">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>CATS | Inscrição</title>
+  <style>
+    :root{
+      --bg:#f4f1ea;--surface:#ffffff;--ink:#17212b;--muted:#66717c;
+      --brand:#17324d;--brand2:#8b8164;--accent:#b56d2d;--line:#ddd8cd;
+      --ok:#1f7a55;--danger:#9f2f35;--shadow:0 18px 46px rgba(23,50,77,.12);
+      --radius:20px;--max:920px;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:linear-gradient(180deg,#ede9e0 0,#f7f5f0 360px,var(--bg) 100%);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.55}
+    button,input,select,textarea{font:inherit}
+    a{color:inherit}
+    .shell{width:min(calc(100% - 28px),var(--max));margin:auto}
+    .hero{padding:34px 0 22px}
+    .hero-card{position:relative;overflow:hidden;background:linear-gradient(135deg,var(--brand),#274b69 72%,#3d5e78);color:#fff;border-radius:28px;padding:30px;box-shadow:var(--shadow)}
+    .hero-card:after{content:"";position:absolute;width:280px;height:280px;border-radius:50%;right:-100px;top:-130px;background:rgba(255,255,255,.07)}
+    .eyebrow{font-size:.78rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#e7ddc5}
+    h1{font-size:clamp(1.75rem,4vw,2.55rem);line-height:1.08;margin:.4rem 0 .7rem;max-width:720px}
+    .lead{max-width:760px;color:#edf3f8;margin:0;font-size:1rem}
+    .event-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:22px}
+    .event-chip{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);border-radius:14px;padding:12px}
+    .event-chip small{display:block;color:#d9e3eb;margin-bottom:3px}.event-chip strong{display:block;font-size:.94rem}
+    .progress-wrap{position:sticky;top:0;z-index:10;background:rgba(244,241,234,.94);backdrop-filter:blur(12px);border-bottom:1px solid rgba(139,129,100,.17);padding:10px 0}
+    .progress-row{display:flex;align-items:center;gap:12px}
+    .progress-track{height:8px;flex:1;background:#ddd8cd;border-radius:999px;overflow:hidden}.progress-bar{height:100%;width:33.33%;background:linear-gradient(90deg,var(--brand2),var(--accent));transition:width .25s ease}
+    .progress-label{font-size:.84rem;color:var(--muted);white-space:nowrap;font-weight:700}
+    main{padding:18px 0 54px}
+    .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 10px 30px rgba(39,44,51,.06);padding:22px;margin-bottom:16px}
+    .section-head{display:flex;gap:12px;align-items:flex-start;margin-bottom:18px}.step-badge{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;flex:0 0 34px;background:#ece7dc;color:var(--brand);font-weight:900}.section-head h2{margin:0;font-size:1.22rem}.section-head p{margin:3px 0 0;color:var(--muted);font-size:.92rem}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.span-2{grid-column:1/-1}
+    .field label,.q-title{display:block;font-size:.88rem;font-weight:800;margin:0 0 7px;color:#27323c}.req{color:var(--danger)}
+    input,select,textarea{width:100%;border:1px solid #cfc9bd;background:#fff;border-radius:12px;padding:12px 13px;color:var(--ink);outline:none;transition:border-color .15s,box-shadow .15s}
+    textarea{min-height:106px;resize:vertical}
+    input:focus,select:focus,textarea:focus{border-color:#8d765b;box-shadow:0 0 0 4px rgba(181,109,45,.11)}
+    .choice-row{display:grid;gap:8px}.choice{position:relative}.choice input{position:absolute;opacity:0;pointer-events:none}.choice span{display:block;border:1px solid #d7d1c5;border-radius:12px;padding:11px 12px;background:#faf9f6;cursor:pointer;font-size:.9rem}.choice input:checked+span{border-color:#8d765b;background:#f2ede4;box-shadow:inset 0 0 0 1px #8d765b}
+    .hint{font-size:.79rem;color:var(--muted);margin-top:5px}
+    .step{display:none}.step.active{display:block}
+    .actions{display:flex;justify-content:space-between;gap:10px;margin-top:18px}.actions.end{justify-content:flex-end}
+    .btn{border:0;border-radius:12px;padding:12px 17px;font-weight:850;cursor:pointer}.btn-primary{background:var(--brand);color:#fff}.btn-secondary{background:#eae6dd;color:var(--brand)}.btn[disabled]{opacity:.48;cursor:not-allowed}
+    .notice{border-radius:14px;padding:13px 14px;font-size:.88rem;margin:12px 0}.notice.warn{background:#fff5e7;border:1px solid #efd1a8;color:#71491f}.notice.info{background:#eef4f8;border:1px solid #ccdce7;color:#29495f}.notice.ok{background:#edf8f2;border:1px solid #c8e7d8;color:#245b43}
+    .clinical-grid{display:grid;gap:16px}.clinical-item{border:1px solid var(--line);border-radius:16px;padding:16px;background:#fbfaf7}.clinical-item strong{display:block;margin-bottom:10px;font-size:.98rem;color:var(--brand)}
+    .invalid{border-color:var(--danger)!important;box-shadow:0 0 0 3px rgba(159,47,53,.10)!important}.error{font-size:.78rem;color:var(--danger);margin-top:5px;min-height:1.1em}
+    .success{display:none;text-align:center;padding:30px 16px}.success.show{display:block}.success-icon{width:58px;height:58px;margin:0 auto 12px;border-radius:50%;display:grid;place-items:center;background:#e8f5ee;color:var(--ok);font-weight:900;font-size:1.4rem}.success h2{margin:0 0 6px}.success p{color:var(--muted);margin:0}
+    .footer{color:#6b716e;text-align:center;font-size:.78rem;padding:0 0 26px}.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:6px}
+    iframe[name="google-response"]{display:none;width:0;height:0;border:0}
+    @media(max-width:720px){.hero{padding-top:16px}.hero-card{padding:22px;border-radius:22px}.event-grid,.grid{grid-template-columns:1fr}.span-2{grid-column:auto}.event-grid{gap:8px}.card{padding:17px;border-radius:17px}.actions{position:sticky;bottom:0;background:linear-gradient(180deg,rgba(255,255,255,.25),#fff 30%);padding-top:14px}.btn{flex:1}.progress-label{font-size:.78rem}}
+    @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="shell">
+      <div class="hero-card">
+        <div class="eyebrow">CBMMG • CATS</div>
+        <h1>Curso de Atendimento a Tentativas de Suicídio</h1>
+        <p class="lead">Formulário de inscrição e levantamento prévio para organização e acompanhamento do curso.</p>
+        <div class="event-grid" aria-label="Informações do evento">
+          <div class="event-chip"><small>Data e horário</small><strong>08 a 12 de setembro • 7h às 20h</strong></div>
+          <div class="event-chip"><small>Local informado</small><strong>Av. Brasil, 3.405 • Centro</strong></div>
+          <div class="event-chip"><small>Contato</small><strong>(32) 3228-9600</strong></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="progress-wrap">
+    <div class="shell progress-row">
+      <div class="progress-track" aria-hidden="true"><div class="progress-bar" id="progressBar"></div></div>
+      <div class="progress-label" id="progressLabel">Etapa 1 de 3</div>
+    </div>
+  </div>
+
+  <main class="shell">
+    <form id="catsForm" action="https://docs.google.com/forms/d/e/1FAIpQLScVj6HESm2cWDN3sNQCaoNOtWSKini7NbSHgiTXemwlyvqAXg/formResponse" method="POST" target="google-response" novalidate>
+
+      <section class="step active" data-step="1">
+        <div class="card">
+          <div class="section-head"><div class="step-badge">1</div><div><h2>Informações gerais</h2><p>Registre seus dados de identificação.</p></div></div>
+          <div class="grid">
+            <div class="field"><label for="data">Data de preenchimento <span class="req">*</span></label><input id="data" name="entry.2092238618" type="date" required><div class="error"></div></div>
+            <div class="field"><label for="nome">Nome completo em caixa alta <span class="req">*</span></label><input id="nome" name="entry.1067284683" type="text" autocomplete="name" required style="text-transform:uppercase"><div class="error"></div></div>
+            <div class="field"><label for="posto">Posto/Graduação <span class="req">*</span></label><input id="posto" name="entry.55438016" type="text" placeholder="Ex.: Cap" required><div class="hint">Digite exatamente como consta na instituição.</div><div class="error"></div></div>
+            <div class="field"><label for="tempo">Tempo de serviço na instituição <span class="req">*</span></label><input id="tempo" name="entry.1097052870" type="text" placeholder="Ex.: de 5 a 10 anos." required><div class="error"></div></div>
+            <div class="field"><label for="email">Melhor e-mail <span class="req">*</span></label><input id="email" name="entry.1556369182" type="email" autocomplete="email" required><div class="error"></div></div>
+            <div class="field"><label for="instituicao">Instituição em que trabalha <span class="req">*</span></label><input id="instituicao" name="entry.479301265" type="text" placeholder="CBMMG, SAMU, PMMG..." required><div class="error"></div></div>
+            <div class="field span-2"><label for="unidade">Unidade em que trabalha <span class="req">*</span></label><input id="unidade" name="entry.754065079" type="text" placeholder="Ex.: 3º Pel/2ª Cia/9º BBM" required><div class="error"></div></div>
+            <div class="field"><label for="registro">Número BM/PM ou RG <span class="req">*</span></label><input id="registro" name="entry.980795914" type="text" inputmode="numeric" required><div class="error"></div></div>
+            <div class="field"><label for="cpf">CPF <span class="req">*</span></label><input id="cpf" name="entry.426148251" type="text" inputmode="numeric" autocomplete="off" maxlength="14" required><div class="error"></div></div>
+            <div class="field"><label for="sangue">Tipagem sanguínea/Fator RH <span class="req">*</span></label><input id="sangue" name="entry.1955177918" type="text" placeholder="Ex.: O+" required><div class="error"></div></div>
+            <div class="field"><div class="q-title">Tem alergia a alguma substância? <span class="req">*</span></div><div class="choice-row"><label class="choice"><input type="radio" name="entry.192985690" value="Sim." required><span>Sim</span></label><label class="choice"><input type="radio" name="entry.192985690" value="Não."><span>Não</span></label></div><div class="error"></div></div>
+            <div class="field span-2"><label for="alergia">Se alérgico, digite a que é alérgico</label><input id="alergia" name="entry.1609773859" type="text"><div class="error"></div></div>
+          </div>
+          <div class="actions end"><button type="button" class="btn btn-primary" data-next>Continuar</button></div>
+        </div>
+      </section>
+
+      <section class="step" data-step="2">
+        <div class="card">
+          <div class="section-head"><div class="step-badge">2</div><div><h2>Habilidades prévias</h2><p>Informações sobre experiência anterior relacionada ao atendimento.</p></div></div>
+          <div class="grid">
+            <div class="field span-2"><label for="motivo">Por que escolheu participar do CATS? <span class="req">*</span></label><textarea id="motivo" name="entry.537680077" required></textarea><div class="error"></div></div>
+            <div class="field span-2"><div class="q-title">Experiência prévia em ocorrência <span class="req">*</span></div><select id="ocorrencia" required><option value="">Selecione...</option><option value="Sim">Sim</option><option value="Não">Não</option></select><div class="error"></div></div>
+            <div class="field span-2"><div class="q-title">Já presenciou suicídio completo? <span class="req">*</span></div><select id="presenciou" name="entry.212330805" required><option value="">Selecione...</option><option value="Não.">Não</option><option value="Sim, de 01 a 05 suicídios completos.">Sim, de 01 a 05</option><option value="Sim, mais de 05 suicídios completos.">Sim, mais de 05</option></select><div class="error"></div></div>
+          </div>
+          <div class="actions"><button type="button" class="btn btn-secondary" data-prev>Voltar</button><button type="button" class="btn btn-primary" data-next>Continuar</button></div>
+        </div>
+      </section>
+
+      <section class="step" data-step="3">
+        <div class="card">
+          <div class="section-head"><div class="step-badge">3</div><div><h2>Estado mental prévio</h2><p>Este questionário consiste em 21 grupos de afirmações. Por favor, leia cada uma delas cuidadosamente. Depois, escolha uma frase de cada grupo que melhor descreve o modo como tem se sentido nas últimas duas semanas, incluindo o dia de hoje. Marque o círculo correspondente a afirmação escolhida em cada grupo.</p></div></div>
+          <div class="clinical-grid" id="clinicalGrid"></div>
+          <div class="notice info" style="margin-top:18px;"><span class="status-dot"></span><strong id="configState">Formulário pronto para envio.</strong></div>
+          <div class="actions"><button type="button" class="btn btn-secondary" data-prev>Voltar</button><button type="submit" class="btn btn-primary" id="submitBtn">Enviar inscrição</button></div>
+        </div>
+      </section>
+    </form>
+
+    <section class="card success" id="success" aria-live="polite">
+      <div class="success-icon">✓</div><h2>Inscrição registrada</h2><p>Os dados foram enviados com sucesso. Você já pode fechar esta página.</p>
+    </section>
+
+    <iframe name="google-response" id="google-response" title="Envio do formulário"></iframe>
+  </main>
+
+  <footer class="shell footer">CATS • formulário de inscrição • interface personalizada</footer>
+
+<script>
+(() => {
+  'use strict';
+
+  const CLINICAL = [
+    {
+      title: 'Tristeza',
+      entry: 'entry.1753222212',
+      options: [
+        'Não me sinto triste.',
+        'Eu me sinto triste grande parte do tempo.',
+        'Estou triste o tempo todo.',
+        'Estou tão triste e tão infeliz que não consigo suportar.'
+      ]
+    },
+    {
+      title: 'Pessimismo',
+      entry: 'entry.588393791',
+      options: [
+        'Não estou desanimado (a) a respeito do meu futuro.',
+        'Eu me sinto mais desanimado (a) a respeito do meu futuro do que de costume.',
+        'Não espero que as coisas dêem certo para mim.',
+        'Sinto que não há esperança quanto ao meu futuro. Acho que só vai piorar.'
+      ]
+    },
+    {
+      title: 'Perda de prazer',
+      entry: 'entry.172540070',
+      options: [
+        'Continuo sentindo o mesmo prazer que sentia com as coisas de que eu gosto.',
+        'Não sinto tanto prazer com as coisas como costumava sentir.',
+        'Tenho muito pouco prazer nas coisas que eu costumava gostar.',
+        'Não tenho mais nenhum prazer nas coisas que costumava gostar.'
+      ]
+    },
+    {
+      title: 'Fracasso passado',
+      entry: 'entry.2109138769',
+      options: [
+        'Não me sinto um (a) fracassado (a).',
+        'Tenho fracassado mais do que deveria.',
+        'Quando penso no passado, vejo muitos fracassos.',
+        'Sinto que como pessoa sou um fracasso total.'
+      ]
+    },
+    {
+      title: 'Sentimentos de culpa',
+      entry: 'entry.626004811',
+      options: [
+        'Não me sinto particularmente culpado (a).',
+        'Eu me sinto culpado (a) a respeito de várias coisas que eu fiz ou que deveria ser feito.',
+        'Eu me sinto culpado (a) a maior parte do tempo.',
+        'Eu me sinto culpado (a) o tempo todo.'
+      ]
+    },
+    {
+      title: 'Sentimentos de punição',
+      entry: 'entry.1430264471',
+      options: [
+        'Não sinto que estou sendo punido (a).',
+        'Sinto que posso ser punido (a).',
+        'Eu acho que serei punido (a).',
+        'Sinto que estou sendo punido (a).'
+      ]
+    },
+    {
+      title: 'Auto-estima',
+      entry: 'entry.1546183328',
+      options: [
+        'Eu me sinto como sempre me senti em relação a mim mesmo (a).',
+        'Perdi a confiança em mim mesmo (a).',
+        'Estou desapontado (a) comigo mesmo (a).',
+        'Não gosto de mim.'
+      ]
+    },
+    {
+      title: 'Autocrítica',
+      entry: 'entry.448436485',
+      options: [
+        'Não me critico e não me culpo mais do que o habitual.',
+        'Estou sendo mais crítico (a) comigo (a) mesmo (a).',
+        'Eu me critico por todos os meus erros.',
+        'Eu me critico por tudo de ruim que acontece.'
+      ]
+    },
+    {
+      title: 'Pensamentos ou desejos suicidas',
+      entry: 'entry.879149456',
+      options: [
+        'Não tenho nenhum pensamento de me matar.',
+        'Tenho pensamentos de me matar, mas não levaria isso adiante.',
+        'Gostaria de matar.',
+        'Eu me mataria se tivesse oportunidade.'
+      ]
+    },
+    {
+      title: 'Choro',
+      entry: 'entry.1451960436',
+      options: [
+        'Não choro mais do que chorava antes.',
+        'Choro mais agora do que costumava chorar.',
+        'Choro por qualquer coisinha.',
+        'Sinto vontade de chorar mas não consigo.'
+      ]
+    },
+    {
+      title: 'Agitação',
+      entry: 'entry.952873920',
+      options: [
+        'Não me sinto mais inquieto (a) ou agitado (a) do que me sentia antes.',
+        'Eu me sinto mais inquieto (a) ou agitado (a) do que me sentia antes.',
+        'Eu me sinto tão inquieto (a) ou agitado (a) que é difícil ficar parado (a).',
+        'Estou tão inquieto (a) ou agitado (a) que tenho que estar sempre me mexendo ou fazendo alguma coisa.'
+      ]
+    },
+    {
+      title: 'Perda de interesse',
+      entry: 'entry.19603155',
+      options: [
+        'Não perdi o interesse por outras pessoas ou por minhas atividades.',
+        'Estou menos interessados pelas outras pessoas ou coisas do que costumava estar.',
+        'Perdi quase todo o interesse por outras pessoas ou coisas.',
+        'É difícil me interessar por alguma coisa.'
+      ]
+    },
+    {
+      title: 'Indecisão',
+      entry: 'entry.1522491269',
+      options: [
+        'Tomo minhas decisões tão bem quanto antes.',
+        'Acho mais difícil tomar decisões agora do que antes.',
+        'Tenho muito mais dificuldades em tomar decisões agora do que antes.',
+        'Tenho dificuldade para tomar qualquer decisão.'
+      ]
+    },
+    {
+      title: 'Desvalorização',
+      entry: 'entry.1597806296',
+      options: [
+        'Não me sinto sem valor.',
+        'Não me considero hoje tão útil ou não me valorizo como antes.',
+        'Eu me sinto com menos valor quando me comparo com outras pessoas.',
+        'Eu me sinto completamente sem valor.'
+      ]
+    },
+    {
+      title: 'Falta de energia',
+      entry: 'entry.560381527',
+      options: [
+        'Tenho tanta energia hoje como sempre tive.',
+        'Tenho menos energia do que costumava ter.',
+        'Não tenho energia suficiente para fazer muita coisa.',
+        'Não tenho energia suficiente para nada.'
+      ]
+    },
+    {
+      title: 'Alterações no padrão de sono',
+      entry: 'entry.258157143',
+      options: [
+        'Não percebi nenhuma mudança no meu sono.',
+        'Durmo um pouco mais do que o habitual.',
+        'Durmo um pouco menos do que o habitual.',
+        'Durmo muito mais do que o habitual.',
+        'Durmo muito menos do que o habitual.',
+        'Durmo a maior parte do dia.',
+        'Acordo 1 ou 2 horas mais cedo e não consigo voltar a dormir.'
+      ]
+    },
+    {
+      title: 'Irritabilidade',
+      entry: '',
+      options: [
+        'Não estou mais irritado (a) do que o habitual.',
+        'Estou mais irritado (a) do que o habitual.',
+        'Estou muito mais irritado (a) do que o habitual.',
+        'Fico irritado (a) o tempo todo.'
+      ]
+    },
+    {
+      title: 'Alterações de apetite',
+      entry: 'entry.2014346604',
+      options: [
+        'Não percebi nenhuma mudança no meu apetite.',
+        'Meu apetite está um pouco menor do que o habitual.',
+        'Meu apetite está um pouco maior do que o habitual.',
+        'Meu apetite está muito menor do que antes.',
+        'Meu apetite está muito maior do que antes.',
+        'Não tenho nenhum apetite.',
+        'Quero comer o tempo todo.'
+      ]
+    },
+    {
+      title: 'Dificuldade de concentração',
+      entry: 'entry.212347542',
+      options: [
+        'Posso me concentrar tão bem quanto antes.',
+        'Não posso me concentrar tão bem como habitualmente.',
+        'É muito difícil manter a concentração em alguma coisa por muito tempo.',
+        'Eu acho que não consigo me concentrar em nada.'
+      ]
+    },
+    {
+      title: 'Cansaço ou fadiga',
+      entry: 'entry.692226779',
+      options: [
+        'Não estou mais cansado (a) ou fatigado (a) do que o habitual.',
+        'Fico cansado (a) ou fatigado (a) mais facilmente do que o habitual.',
+        'Eu me sinto cansado (a) ou fatigado (a) para fazer muitas coisas que costumava fazer.',
+        'Eu me sinto muito cansado (a) ou fatigado (a) para fazer a maioria das coisas que costumava fazer.'
+      ]
+    },
+    {
+      title: 'Perda de interesse por sexo',
+      entry: 'entry.1253671366',
+      options: [
+        'Não notei qualquer mudança recente no meu interesse por sexo.',
+        'Estou menos interessado (a) em sexo do que costumava estar.',
+        'Estou muito menos interessado (a) em sexo agora.',
+        'Perdi completamente o interesse por sexo.'
+      ]
+    }
+  ];
+
+  const $ = s => document.querySelector(s);
+  const $$ = s => [...document.querySelectorAll(s)];
+  let step = 1;
+  const maxStep = 3;
+
+  const grid = $('#clinicalGrid');
+  grid.innerHTML = CLINICAL.map((item, i) => {
+    const fieldName = item.entry ? item.entry : `temp_clinical_${i}`;
+    const optionsHtml = item.options.map(opt => `
+      <label class="choice">
+        <input type="radio" name="${fieldName}" value="${opt.replace(/"/g, '&quot;')}" required>
+        <span>${opt}</span>
+      </label>
+    `).join('');
+
+    return `
+      <article class="clinical-item field">
+        <strong>${String(i + 1).padStart(2, '0')}. ${item.title} <span class="req">*</span></strong>
+        <div class="choice-row">
+          ${optionsHtml}
+        </div>
+        <div class="error"></div>
+      </article>
+    `;
+  }).join('');
+
+  function showStep(n){
+    step = Math.min(maxStep, Math.max(1, n));
+    $$('.step').forEach(el => el.classList.toggle('active', Number(el.dataset.step) === step));
+    $('#progressBar').style.width = `${step / maxStep * 100}%`;
+    $('#progressLabel').textContent = `Etapa ${step} de ${maxStep}`;
+    window.scrollTo({top: Math.max(0, document.querySelector('.progress-wrap').offsetTop), behavior: 'smooth'});
+  }
+
+  function clearError(el){
+    el.classList.remove('invalid');
+    const box = el.closest('.field')?.querySelector('.error');
+    if(box) box.textContent = '';
+  }
+
+  function setError(el, msg){
+    el.classList.add('invalid');
+    const box = el.closest('.field')?.querySelector('.error');
+    if(box) box.textContent = msg;
+  }
+
+  function validateCurrent(){
+    const root = document.querySelector(`.step[data-step="${step}"]`);
+    let first = null;
+    root.querySelectorAll('[required]').forEach(el => {
+      clearError(el);
+      let valid = true;
+      if(el.type === 'radio'){
+        valid = !!root.querySelector(`input[name="${CSS.escape(el.name)}"]:checked`);
+      } else {
+        valid = !!String(el.value || '').trim() && el.checkValidity();
+      }
+      if(!valid && !first){ 
+        first = el; 
+        setError(el, 'Selecione uma opção para continuar.'); 
+      }
+    });
+    if(first){ 
+      first.focus(); 
+      return false; 
+    }
+    return true;
+  }
+
+  $$('[data-next]').forEach(b => b.addEventListener('click', () => { if(validateCurrent()) showStep(step + 1); }));
+  $$('[data-prev]').forEach(b => b.addEventListener('click', () => showStep(step - 1)));
+  $$('input,select,textarea').forEach(el => el.addEventListener('input', () => clearError(el)));
+
+  $('#nome').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
+  $('#cpf').addEventListener('input', e => {
+    let v = e.target.value.replace(/\D/g, '').slice(0, 11);
+    v = v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    e.target.value = v;
+  });
+
+  const d = $('#data'); 
+  if(!d.value){
+    const now = new Date();
+    const local = new Date(now - now.getTimezoneOffset() * 60000);
+    d.value = local.toISOString().slice(0, 10);
+  }
+
+  const CONFIG_READY = true;
+
+  let submitted = false;
+  $('#catsForm').addEventListener('submit', e => {
+    if(!CONFIG_READY){
+      e.preventDefault();
+      alert('A integração ainda não está pronta.');
+      return;
+    }
+    if(!validateCurrent()){
+      e.preventDefault();
+      return;
+    }
+    submitted = true;
+    $('#submitBtn').disabled = true;
+    $('#submitBtn').textContent = 'Enviando...';
+  });
+
+  $('#google-response').addEventListener('load', () => {
+    if(!submitted) return;
+    $('#catsForm').style.display = 'none';
+    $('#success').classList.add('show');
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  });
+})();
+</script>
+</body>
+</html>

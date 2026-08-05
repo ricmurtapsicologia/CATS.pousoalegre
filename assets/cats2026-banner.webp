@@ -1,0 +1,38 @@
+# CATS 2026 — VII Edição | Pouso Alegre
+
+Página personalizada de inscrição do **Curso de Atendimento a Tentativas de Suicídio (CATS) — VII Edição / 2026**.
+
+## Dados do curso
+
+- Modalidade: presencial
+- Carga horária: 46 h/a
+- Período: 21 a 25 de setembro de 2026
+- Módulo teórico: Pouso Alegre/MG
+- Módulo prático: Itajubá/MG
+- Vagas: 40
+- Inscrições: até 10 de agosto de 2026
+- Prova de seleção: 21 de agosto de 2026, às 19h30
+- Referência: Edital nº 24/2026
+
+## Arquitetura
+
+A aplicação é uma página estática responsiva hospedável no GitHub Pages. A identidade visual foi ajustada ao material oficial do CATS 2026, com predominância de azul-marinho, laranja e alto contraste.
+
+O envio está preparado para o endpoint `formResponse` do Google Forms, em iframe oculto, para que a interface exibida ao candidato permaneça integralmente personalizada.
+
+## Integração com o Google Forms
+
+Os campos administrativos identificados pelo link pré-preenchido estão mapeados por `entry.xxxxx`. O formulário original contém campos obrigatórios adicionais que não estavam preenchidos no link usado para mapear a integração. Para evitar registros incompletos, a interface mantém uma trava técnica enquanto esses itens não forem configurados integralmente.
+
+O bloco de avaliação padronizada permanece separado da camada de interface. Seus textos devem ser inseridos pelo responsável técnico autorizado no objeto de configuração indicado no `index.html`, sem necessidade de alterar o CSS, a navegação ou a lógica de envio.
+
+## Publicação
+
+Em **Settings → Pages**:
+
+1. Source: `Deploy from a branch`.
+2. Branch: `main`.
+3. Folder: `/ (root)`.
+4. Save.
+
+Endereço esperado: `https://ricmurtapsicologia.github.io/CATS.pousoalegre/`
