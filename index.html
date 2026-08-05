@@ -40,16 +40,16 @@
     input,select,textarea{width:100%;border:1px solid #cfc9bd;background:#fff;border-radius:12px;padding:12px 13px;color:var(--ink);outline:none;transition:border-color .15s,box-shadow .15s}
     textarea{min-height:106px;resize:vertical}
     input:focus,select:focus,textarea:focus{border-color:#8d765b;box-shadow:0 0 0 4px rgba(181,109,45,.11)}
-    .choice-row{display:grid;gap:8px}.choice{position:relative}.choice input{position:absolute;opacity:0;pointer-events:none}.choice span{display:block;border:1px solid #d7d1c5;border-radius:12px;padding:11px 12px;background:#faf9f6;cursor:pointer}.choice input:checked+span{border-color:#8d765b;background:#f2ede4;box-shadow:inset 0 0 0 1px #8d765b}
+    .choice-row{display:grid;gap:8px}.choice{position:relative}.choice input{position:absolute;opacity:0;pointer-events:none}.choice span{display:block;border:1px solid #d7d1c5;border-radius:12px;padding:11px 12px;background:#faf9f6;cursor:pointer;font-size:.9rem}.choice input:checked+span{border-color:#8d765b;background:#f2ede4;box-shadow:inset 0 0 0 1px #8d765b}
     .hint{font-size:.79rem;color:var(--muted);margin-top:5px}
     .step{display:none}.step.active{display:block}
     .actions{display:flex;justify-content:space-between;gap:10px;margin-top:18px}.actions.end{justify-content:flex-end}
     .btn{border:0;border-radius:12px;padding:12px 17px;font-weight:850;cursor:pointer}.btn-primary{background:var(--brand);color:#fff}.btn-secondary{background:#eae6dd;color:var(--brand)}.btn[disabled]{opacity:.48;cursor:not-allowed}
     .notice{border-radius:14px;padding:13px 14px;font-size:.88rem;margin:12px 0}.notice.warn{background:#fff5e7;border:1px solid #efd1a8;color:#71491f}.notice.info{background:#eef4f8;border:1px solid #ccdce7;color:#29495f}.notice.ok{background:#edf8f2;border:1px solid #c8e7d8;color:#245b43}
-    .clinical-grid{display:grid;gap:10px}.clinical-item{border:1px solid var(--line);border-radius:14px;padding:13px;background:#fbfaf7}.clinical-item strong{display:block;margin-bottom:6px}.clinical-placeholder{font-size:.83rem;color:var(--muted);border:1px dashed #c9c1b3;border-radius:10px;padding:10px;background:#fff}
+    .clinical-grid{display:grid;gap:16px}.clinical-item{border:1px solid var(--line);border-radius:16px;padding:16px;background:#fbfaf7}.clinical-item strong{display:block;margin-bottom:10px;font-size:.98rem;color:var(--brand)}
     .invalid{border-color:var(--danger)!important;box-shadow:0 0 0 3px rgba(159,47,53,.10)!important}.error{font-size:.78rem;color:var(--danger);margin-top:5px;min-height:1.1em}
     .success{display:none;text-align:center;padding:30px 16px}.success.show{display:block}.success-icon{width:58px;height:58px;margin:0 auto 12px;border-radius:50%;display:grid;place-items:center;background:#e8f5ee;color:var(--ok);font-weight:900;font-size:1.4rem}.success h2{margin:0 0 6px}.success p{color:var(--muted);margin:0}
-    .footer{color:#6b716e;text-align:center;font-size:.78rem;padding:0 0 26px}.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--danger);margin-right:6px}
+    .footer{color:#6b716e;text-align:center;font-size:.78rem;padding:0 0 26px}.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:6px}
     iframe[name="google-response"]{display:none;width:0;height:0;border:0}
     @media(max-width:720px){.hero{padding-top:16px}.hero-card{padding:22px;border-radius:22px}.event-grid,.grid{grid-template-columns:1fr}.span-2{grid-column:auto}.event-grid{gap:8px}.card{padding:17px;border-radius:17px}.actions{position:sticky;bottom:0;background:linear-gradient(180deg,rgba(255,255,255,.25),#fff 30%);padding-top:14px}.btn{flex:1}.progress-label{font-size:.78rem}}
     @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
@@ -107,7 +107,7 @@
           <div class="section-head"><div class="step-badge">2</div><div><h2>Habilidades prévias</h2><p>Informações sobre experiência anterior relacionada ao atendimento.</p></div></div>
           <div class="grid">
             <div class="field span-2"><label for="motivo">Por que escolheu participar do CATS? <span class="req">*</span></label><textarea id="motivo" name="entry.537680077" required></textarea><div class="error"></div></div>
-            <div class="field span-2"><div class="q-title">Experiência prévia em ocorrência <span class="req">*</span></div><div class="notice info">Campo preparado na interface, mas o identificador Google Forms deste item não estava presente no link pré-preenchido fornecido. O envio fica protegido até a configuração ser concluída.</div><select id="ocorrencia" required><option value="">Selecione...</option><option>Sim</option><option>Não</option></select><div class="error"></div></div>
+            <div class="field span-2"><div class="q-title">Experiência prévia em ocorrência <span class="req">*</span></div><select id="ocorrencia" required><option value="">Selecione...</option><option value="Sim">Sim</option><option value="Não">Não</option></select><div class="error"></div></div>
             <div class="field span-2"><div class="q-title">Já presenciou suicídio completo? <span class="req">*</span></div><select id="presenciou" name="entry.212330805" required><option value="">Selecione...</option><option value="Não.">Não</option><option value="Sim, de 01 a 05 suicídios completos.">Sim, de 01 a 05</option><option value="Sim, mais de 05 suicídios completos.">Sim, mais de 05</option></select><div class="error"></div></div>
           </div>
           <div class="actions"><button type="button" class="btn btn-secondary" data-prev>Voltar</button><button type="button" class="btn btn-primary" data-next>Continuar</button></div>
@@ -116,17 +116,16 @@
 
       <section class="step" data-step="3">
         <div class="card">
-          <div class="section-head"><div class="step-badge">3</div><div><h2>Estado mental prévio</h2><p>Bloco estruturado em 21 itens para a avaliação definida pelo responsável técnico.</p></div></div>
-          <div class="notice warn"><strong>Configuração clínica pendente.</strong> A página já contém o mapeamento técnico dos campos conhecidos, mas não republica o conteúdo literal do instrumento padronizado. Também falta o identificador do item de irritabilidade. Por segurança, o botão de envio permanecerá desabilitado até esses dados serem inseridos.</div>
+          <div class="section-head"><div class="step-badge">3</div><div><h2>Estado mental prévio</h2><p>Este questionário consiste em 21 grupos de afirmações. Por favor, leia cada uma delas cuidadosamente. Depois, escolha uma frase de cada grupo que melhor descreve o modo como tem se sentido nas últimas duas semanas, incluindo o dia de hoje. Marque o círculo correspondente a afirmação escolhida em cada grupo.</p></div></div>
           <div class="clinical-grid" id="clinicalGrid"></div>
-          <div class="notice info"><span class="status-dot"></span><strong id="configState">Integração incompleta:</strong> nenhum dado será enviado parcialmente ao Google Forms.</div>
-          <div class="actions"><button type="button" class="btn btn-secondary" data-prev>Voltar</button><button type="submit" class="btn btn-primary" id="submitBtn" disabled>Enviar inscrição</button></div>
+          <div class="notice info" style="margin-top:18px;"><span class="status-dot"></span><strong id="configState">Formulário pronto para envio.</strong></div>
+          <div class="actions"><button type="button" class="btn btn-secondary" data-prev>Voltar</button><button type="submit" class="btn btn-primary" id="submitBtn">Enviar inscrição</button></div>
         </div>
       </section>
     </form>
 
     <section class="card success" id="success" aria-live="polite">
-      <div class="success-icon">✓</div><h2>Inscrição registrada</h2><p>Os dados foram enviados. Você já pode fechar esta página.</p>
+      <div class="success-icon">✓</div><h2>Inscrição registrada</h2><p>Os dados foram enviados com sucesso. Você já pode fechar esta página.</p>
     </section>
 
     <iframe name="google-response" id="google-response" title="Envio do formulário"></iframe>
@@ -137,28 +136,224 @@
 <script>
 (() => {
   'use strict';
+
   const CLINICAL = [
-    ['Tristeza','entry.1753222212',4],
-    ['Pessimismo','entry.588393791',4],
-    ['Perda de prazer','entry.172540070',4],
-    ['Fracasso passado','entry.2109138769',4],
-    ['Sentimentos de culpa','entry.626004811',4],
-    ['Sentimentos de punição','entry.1430264471',4],
-    ['Autoestima','entry.1546183328',4],
-    ['Autocrítica','entry.448436485',4],
-    ['Item de segurança','entry.879149456',4],
-    ['Choro','entry.1451960436',4],
-    ['Agitação','entry.952873920',4],
-    ['Perda de interesse','entry.19603155',4],
-    ['Indecisão','entry.1522491269',4],
-    ['Desvalorização','entry.1597806296',4],
-    ['Falta de energia','entry.560381527',4],
-    ['Alterações no padrão de sono','entry.258157143',7],
-    ['Irritabilidade','',4],
-    ['Alterações de apetite','entry.2014346604',7],
-    ['Dificuldade de concentração','entry.212347542',4],
-    ['Cansaço ou fadiga','entry.692226779',4],
-    ['Perda de interesse por sexo','entry.1253671366',4]
+    {
+      title: 'Tristeza',
+      entry: 'entry.1753222212',
+      options: [
+        'Não me sinto triste.',
+        'Eu me sinto triste grande parte do tempo.',
+        'Estou triste o tempo todo.',
+        'Estou tão triste e tão infeliz que não consigo suportar.'
+      ]
+    },
+    {
+      title: 'Pessimismo',
+      entry: 'entry.588393791',
+      options: [
+        'Não estou desanimado (a) a respeito do meu futuro.',
+        'Eu me sinto mais desanimado (a) a respeito do meu futuro do que de costume.',
+        'Não espero que as coisas dêem certo para mim.',
+        'Sinto que não há esperança quanto ao meu futuro. Acho que só vai piorar.'
+      ]
+    },
+    {
+      title: 'Perda de prazer',
+      entry: 'entry.172540070',
+      options: [
+        'Continuo sentindo o mesmo prazer que sentia com as coisas de que eu gosto.',
+        'Não sinto tanto prazer com as coisas como costumava sentir.',
+        'Tenho muito pouco prazer nas coisas que eu costumava gostar.',
+        'Não tenho mais nenhum prazer nas coisas que costumava gostar.'
+      ]
+    },
+    {
+      title: 'Fracasso passado',
+      entry: 'entry.2109138769',
+      options: [
+        'Não me sinto um (a) fracassado (a).',
+        'Tenho fracassado mais do que deveria.',
+        'Quando penso no passado, vejo muitos fracassos.',
+        'Sinto que como pessoa sou um fracasso total.'
+      ]
+    },
+    {
+      title: 'Sentimentos de culpa',
+      entry: 'entry.626004811',
+      options: [
+        'Não me sinto particularmente culpado (a).',
+        'Eu me sinto culpado (a) a respeito de várias coisas que eu fiz ou que deveria ser feito.',
+        'Eu me sinto culpado (a) a maior parte do tempo.',
+        'Eu me sinto culpado (a) o tempo todo.'
+      ]
+    },
+    {
+      title: 'Sentimentos de punição',
+      entry: 'entry.1430264471',
+      options: [
+        'Não sinto que estou sendo punido (a).',
+        'Sinto que posso ser punido (a).',
+        'Eu acho que serei punido (a).',
+        'Sinto que estou sendo punido (a).'
+      ]
+    },
+    {
+      title: 'Auto-estima',
+      entry: 'entry.1546183328',
+      options: [
+        'Eu me sinto como sempre me senti em relação a mim mesmo (a).',
+        'Perdi a confiança em mim mesmo (a).',
+        'Estou desapontado (a) comigo mesmo (a).',
+        'Não gosto de mim.'
+      ]
+    },
+    {
+      title: 'Autocrítica',
+      entry: 'entry.448436485',
+      options: [
+        'Não me critico e não me culpo mais do que o habitual.',
+        'Estou sendo mais crítico (a) comigo (a) mesmo (a).',
+        'Eu me critico por todos os meus erros.',
+        'Eu me critico por tudo de ruim que acontece.'
+      ]
+    },
+    {
+      title: 'Pensamentos ou desejos suicidas',
+      entry: 'entry.879149456',
+      options: [
+        'Não tenho nenhum pensamento de me matar.',
+        'Tenho pensamentos de me matar, mas não levaria isso adiante.',
+        'Gostaria de matar.',
+        'Eu me mataria se tivesse oportunidade.'
+      ]
+    },
+    {
+      title: 'Choro',
+      entry: 'entry.1451960436',
+      options: [
+        'Não choro mais do que chorava antes.',
+        'Choro mais agora do que costumava chorar.',
+        'Choro por qualquer coisinha.',
+        'Sinto vontade de chorar mas não consigo.'
+      ]
+    },
+    {
+      title: 'Agitação',
+      entry: 'entry.952873920',
+      options: [
+        'Não me sinto mais inquieto (a) ou agitado (a) do que me sentia antes.',
+        'Eu me sinto mais inquieto (a) ou agitado (a) do que me sentia antes.',
+        'Eu me sinto tão inquieto (a) ou agitado (a) que é difícil ficar parado (a).',
+        'Estou tão inquieto (a) ou agitado (a) que tenho que estar sempre me mexendo ou fazendo alguma coisa.'
+      ]
+    },
+    {
+      title: 'Perda de interesse',
+      entry: 'entry.19603155',
+      options: [
+        'Não perdi o interesse por outras pessoas ou por minhas atividades.',
+        'Estou menos interessados pelas outras pessoas ou coisas do que costumava estar.',
+        'Perdi quase todo o interesse por outras pessoas ou coisas.',
+        'É difícil me interessar por alguma coisa.'
+      ]
+    },
+    {
+      title: 'Indecisão',
+      entry: 'entry.1522491269',
+      options: [
+        'Tomo minhas decisões tão bem quanto antes.',
+        'Acho mais difícil tomar decisões agora do que antes.',
+        'Tenho muito mais dificuldades em tomar decisões agora do que antes.',
+        'Tenho dificuldade para tomar qualquer decisão.'
+      ]
+    },
+    {
+      title: 'Desvalorização',
+      entry: 'entry.1597806296',
+      options: [
+        'Não me sinto sem valor.',
+        'Não me considero hoje tão útil ou não me valorizo como antes.',
+        'Eu me sinto com menos valor quando me comparo com outras pessoas.',
+        'Eu me sinto completamente sem valor.'
+      ]
+    },
+    {
+      title: 'Falta de energia',
+      entry: 'entry.560381527',
+      options: [
+        'Tenho tanta energia hoje como sempre tive.',
+        'Tenho menos energia do que costumava ter.',
+        'Não tenho energia suficiente para fazer muita coisa.',
+        'Não tenho energia suficiente para nada.'
+      ]
+    },
+    {
+      title: 'Alterações no padrão de sono',
+      entry: 'entry.258157143',
+      options: [
+        'Não percebi nenhuma mudança no meu sono.',
+        'Durmo um pouco mais do que o habitual.',
+        'Durmo um pouco menos do que o habitual.',
+        'Durmo muito mais do que o habitual.',
+        'Durmo muito menos do que o habitual.',
+        'Durmo a maior parte do dia.',
+        'Acordo 1 ou 2 horas mais cedo e não consigo voltar a dormir.'
+      ]
+    },
+    {
+      title: 'Irritabilidade',
+      entry: '',
+      options: [
+        'Não estou mais irritado (a) do que o habitual.',
+        'Estou mais irritado (a) do que o habitual.',
+        'Estou muito mais irritado (a) do que o habitual.',
+        'Fico irritado (a) o tempo todo.'
+      ]
+    },
+    {
+      title: 'Alterações de apetite',
+      entry: 'entry.2014346604',
+      options: [
+        'Não percebi nenhuma mudança no meu apetite.',
+        'Meu apetite está um pouco menor do que o habitual.',
+        'Meu apetite está um pouco maior do que o habitual.',
+        'Meu apetite está muito menor do que antes.',
+        'Meu apetite está muito maior do que antes.',
+        'Não tenho nenhum apetite.',
+        'Quero comer o tempo todo.'
+      ]
+    },
+    {
+      title: 'Dificuldade de concentração',
+      entry: 'entry.212347542',
+      options: [
+        'Posso me concentrar tão bem quanto antes.',
+        'Não posso me concentrar tão bem como habitualmente.',
+        'É muito difícil manter a concentração em alguma coisa por muito tempo.',
+        'Eu acho que não consigo me concentrar em nada.'
+      ]
+    },
+    {
+      title: 'Cansaço ou fadiga',
+      entry: 'entry.692226779',
+      options: [
+        'Não estou mais cansado (a) ou fatigado (a) do que o habitual.',
+        'Fico cansado (a) ou fatigado (a) mais facilmente do que o habitual.',
+        'Eu me sinto cansado (a) ou fatigado (a) para fazer muitas coisas que costumava fazer.',
+        'Eu me sinto muito cansado (a) ou fatigado (a) para fazer a maioria das coisas que costumava fazer.'
+      ]
+    },
+    {
+      title: 'Perda de interesse por sexo',
+      entry: 'entry.1253671366',
+      options: [
+        'Não notei qualquer mudança recente no meu interesse por sexo.',
+        'Estou menos interessado (a) em sexo do que costumava estar.',
+        'Estou muito menos interessado (a) em sexo agora.',
+        'Perdi completamente o interesse por sexo.'
+      ]
+    }
   ];
 
   const $ = s => document.querySelector(s);
@@ -167,76 +362,110 @@
   const maxStep = 3;
 
   const grid = $('#clinicalGrid');
-  grid.innerHTML = CLINICAL.map((it,i) => `
-    <article class="clinical-item">
-      <strong>Item ${String(i+1).padStart(2,'0')} — ${it[0]}</strong>
-      <div class="clinical-placeholder">${it[1] ? `Campo Google mapeado: ${it[1]} • ${it[2]} alternativas previstas.` : 'Identificador Google Forms ainda não mapeado.'}</div>
-    </article>`).join('');
+  grid.innerHTML = CLINICAL.map((item, i) => {
+    const fieldName = item.entry ? item.entry : `temp_clinical_${i}`;
+    const optionsHtml = item.options.map(opt => `
+      <label class="choice">
+        <input type="radio" name="${fieldName}" value="${opt.replace(/"/g, '&quot;')}" required>
+        <span>${opt}</span>
+      </label>
+    `).join('');
+
+    return `
+      <article class="clinical-item field">
+        <strong>${String(i + 1).padStart(2, '0')}. ${item.title} <span class="req">*</span></strong>
+        <div class="choice-row">
+          ${optionsHtml}
+        </div>
+        <div class="error"></div>
+      </article>
+    `;
+  }).join('');
 
   function showStep(n){
-    step = Math.min(maxStep,Math.max(1,n));
-    $$('.step').forEach(el => el.classList.toggle('active',Number(el.dataset.step)===step));
-    $('#progressBar').style.width = `${step/maxStep*100}%`;
+    step = Math.min(maxStep, Math.max(1, n));
+    $$('.step').forEach(el => el.classList.toggle('active', Number(el.dataset.step) === step));
+    $('#progressBar').style.width = `${step / maxStep * 100}%`;
     $('#progressLabel').textContent = `Etapa ${step} de ${maxStep}`;
-    window.scrollTo({top:Math.max(0,document.querySelector('.progress-wrap').offsetTop),behavior:'smooth'});
+    window.scrollTo({top: Math.max(0, document.querySelector('.progress-wrap').offsetTop), behavior: 'smooth'});
   }
 
   function clearError(el){
     el.classList.remove('invalid');
     const box = el.closest('.field')?.querySelector('.error');
-    if(box) box.textContent='';
+    if(box) box.textContent = '';
   }
-  function setError(el,msg){
+
+  function setError(el, msg){
     el.classList.add('invalid');
     const box = el.closest('.field')?.querySelector('.error');
-    if(box) box.textContent=msg;
+    if(box) box.textContent = msg;
   }
+
   function validateCurrent(){
     const root = document.querySelector(`.step[data-step="${step}"]`);
-    let first=null;
+    let first = null;
     root.querySelectorAll('[required]').forEach(el => {
       clearError(el);
-      let valid=true;
-      if(el.type==='radio'){
+      let valid = true;
+      if(el.type === 'radio'){
         valid = !!root.querySelector(`input[name="${CSS.escape(el.name)}"]:checked`);
-      } else valid = !!String(el.value||'').trim() && el.checkValidity();
-      if(!valid && !first){ first=el; setError(el,'Preencha este campo para continuar.'); }
+      } else {
+        valid = !!String(el.value || '').trim() && el.checkValidity();
+      }
+      if(!valid && !first){ 
+        first = el; 
+        setError(el, 'Selecione uma opção para continuar.'); 
+      }
     });
-    if(first){ first.focus(); return false; }
+    if(first){ 
+      first.focus(); 
+      return false; 
+    }
     return true;
   }
 
-  $$('[data-next]').forEach(b => b.addEventListener('click',()=>{ if(validateCurrent()) showStep(step+1); }));
-  $$('[data-prev]').forEach(b => b.addEventListener('click',()=>showStep(step-1)));
-  $$('input,select,textarea').forEach(el => el.addEventListener('input',()=>clearError(el)));
+  $$('[data-next]').forEach(b => b.addEventListener('click', () => { if(validateCurrent()) showStep(step + 1); }));
+  $$('[data-prev]').forEach(b => b.addEventListener('click', () => showStep(step - 1)));
+  $$('input,select,textarea').forEach(el => el.addEventListener('input', () => clearError(el)));
 
-  $('#nome').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase();});
-  $('#cpf').addEventListener('input',e=>{
-    let v=e.target.value.replace(/\D/g,'').slice(0,11);
-    v=v.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2');
-    e.target.value=v;
+  $('#nome').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
+  $('#cpf').addEventListener('input', e => {
+    let v = e.target.value.replace(/\D/g, '').slice(0, 11);
+    v = v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    e.target.value = v;
   });
-  const d=$('#data'); if(!d.value){const now=new Date();const local=new Date(now-now.getTimezoneOffset()*60000);d.value=local.toISOString().slice(0,10);}
 
-  const CONFIG_READY = false;
-  if(CONFIG_READY){
-    $('#submitBtn').disabled=false;
-    $('#configState').textContent='Integração pronta para envio.';
+  const d = $('#data'); 
+  if(!d.value){
+    const now = new Date();
+    const local = new Date(now - now.getTimezoneOffset() * 60000);
+    d.value = local.toISOString().slice(0, 10);
   }
 
-  let submitted=false;
-  $('#catsForm').addEventListener('submit',e=>{
-    if(!CONFIG_READY){e.preventDefault();alert('A integração ainda precisa dos campos clínicos autorizados e dos dois identificadores Google Forms ausentes.');return;}
-    if(!validateCurrent()){e.preventDefault();return;}
-    submitted=true;
-    $('#submitBtn').disabled=true;
-    $('#submitBtn').textContent='Enviando...';
+  const CONFIG_READY = true;
+
+  let submitted = false;
+  $('#catsForm').addEventListener('submit', e => {
+    if(!CONFIG_READY){
+      e.preventDefault();
+      alert('A integração ainda não está pronta.');
+      return;
+    }
+    if(!validateCurrent()){
+      e.preventDefault();
+      return;
+    }
+    submitted = true;
+    $('#submitBtn').disabled = true;
+    $('#submitBtn').textContent = 'Enviando...';
   });
-  $('#google-response').addEventListener('load',()=>{
-    if(!submitted)return;
-    $('#catsForm').style.display='none';
+
+  $('#google-response').addEventListener('load', () => {
+    if(!submitted) return;
+    $('#catsForm').style.display = 'none';
     $('#success').classList.add('show');
-    window.scrollTo({top:0,behavior:'smooth'});
+    window.scrollTo({top: 0, behavior: 'smooth'});
   });
 })();
 </script>
