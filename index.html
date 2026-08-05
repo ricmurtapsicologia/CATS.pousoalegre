@@ -8,12 +8,7 @@
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>CATS 2026 | Inscrição</title>
   <style>
-    :root{
-      color-scheme:light;
-      --bg:#f4f1ea;
-      --ink:#17212b;
-      --muted:#66717c;
-    }
+    :root{color-scheme:light;--bg:#f4f1ea;--ink:#17212b;--muted:#66717c}
     *{box-sizing:border-box}
     html,body{margin:0;width:100%;height:100%;background:var(--bg);overflow:hidden}
     body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink)}
@@ -32,113 +27,53 @@
 (() => {
   'use strict';
 
-  const CONFIG = Object.freeze({
-    formAction:'https://docs.google.com/forms/d/e/1FAIpQLScVj6HESm2cWDN3sNQCaoNOtWSKini7NbSHgiTXemwlyvqAXg/formResponse',
-    heroImage:'https://i.pinimg.com/736x/29/42/2a/29422ad8bed8166ef119bcef4792218f.jpg',
-    target:'google-response'
+  const CFG = Object.freeze({
+    action:'https://docs.google.com/forms/d/e/1FAIpQLScVj6HESm2cWDN3sNQCaoNOtWSKini7NbSHgiTXemwlyvqAXg/formResponse',
+    target:'google-response',
+    hero:'https://i.pinimg.com/736x/29/42/2a/29422ad8bed8166ef119bcef4792218f.jpg'
   });
 
-  const POSTOS = ['Cel','Ten Cel','Maj','Cap','1º Ten','2º Ten','Asp-a-Of.','Cad','Subten','1º Sgt','2º Sgt','3º Sgt','Cb','Sd'];
-  const TEMPO = ['até 5 anos.','de 5 a 10 anos.','De 10 a 15 anos.','De 15 a 20 anos.','de 20 a 25 anos.','Mais de 25 anos de serviço.'];
-  const OCORRENCIAS = ['Nunca participei.','Sim, de 01 a 05 ocorrências','Sim, de 06 a 10 ocorrências','Sim, em mais de 11 ocorrências'];
-  const PRESENCIOU = ['Nunca presenciei.','Sim, de 01 a 05 suicídios completos.','Sim, de 06 a 10 suicídios completos.','Sim, em mais de 11 suicídios completos.'];
+  const POSTOS=['Cel','Ten Cel','Maj','Cap','1º Ten','2º Ten','Asp-a-Of.','Cad','Subten','1º Sgt','2º Sgt','3º Sgt','Cb','Sd'];
+  const TEMPO=['até 5 anos.','de 5 a 10 anos.','De 10 a 15 anos.','De 15 a 20 anos.','de 20 a 25 anos.','Mais de 25 anos de serviço.'];
+  const OCORRENCIAS=['Nunca participei.','Sim, de 01 a 05 ocorrências','Sim, de 06 a 10 ocorrências','Sim, em mais de 11 ocorrências'];
+  const PRESENCIOU=['Nunca presenciei.','Sim, de 01 a 05 suicídios completos.','Sim, de 06 a 10 suicídios completos.','Sim, em mais de 11 suicídios completos.'];
 
-  const EXPECTED = Object.freeze({
-    data:'entry.2092238618',
-    nome:'entry.1067284683',
-    posto:'entry.55438016',
-    tempo:'entry.1097052870',
-    email:'entry.1556369182',
-    instituicao:'entry.479301265',
-    unidade:'entry.754065079',
-    registro:'entry.980795914',
-    cpf:'entry.426148251',
-    sangue:'entry.1955177918',
-    alergia:'entry.1609773859',
-    motivo:'entry.537680077',
-    ocorrencia:'entry.500885681',
-    presenciou:'entry.212330805'
+  const MAP=Object.freeze({
+    data:'entry.2092238618',nome:'entry.1067284683',posto:'entry.55438016',tempo:'entry.1097052870',
+    email:'entry.1556369182',instituicao:'entry.479301265',unidade:'entry.754065079',registro:'entry.980795914',
+    cpf:'entry.426148251',sangue:'entry.1955177918',alergia:'entry.1609773859',motivo:'entry.537680077',
+    ocorrencia:'entry.500885681',presenciou:'entry.212330805'
   });
 
-  const frame = document.getElementById('app');
-  const boot = document.getElementById('boot');
+  const frame=document.getElementById('app');
+  const boot=document.getElementById('boot');
 
-  function makeSelect(doc, old, values){
-    const select = doc.createElement('select');
-    ['id','name','aria-label'].forEach(attr => {
-      const value = old.getAttribute(attr);
-      if(value) select.setAttribute(attr,value);
-    });
-    select.required = old.required;
-    select.autocomplete = old.autocomplete || 'off';
-    const first = doc.createElement('option');
-    first.value='';
-    first.textContent='Escolher';
-    select.append(first);
-    values.forEach(value => {
-      const option=doc.createElement('option');
-      option.value=value;
-      option.textContent=value;
-      select.append(option);
-    });
-    old.replaceWith(select);
-    return select;
+  function hidden(doc,form,name,value){
+    let el=form.querySelector(`input[name="${name}"]`);
+    if(!el){el=doc.createElement('input');el.type='hidden';el.name=name;form.append(el)}
+    el.value=value;
   }
 
-  function setOptions(select, values){
-    select.replaceChildren();
-    const first=select.ownerDocument.createElement('option');
-    first.value='';
-    first.textContent='Escolher';
-    select.append(first);
-    values.forEach(value => {
-      const option=select.ownerDocument.createElement('option');
-      option.value=value;
-      option.textContent=value;
-      select.append(option);
-    });
-  }
-
-  function ensureHidden(doc, form, name, value){
-    let input=form.querySelector(`input[name="${name}"]`);
-    if(!input){
-      input=doc.createElement('input');
-      input.type='hidden';
-      input.name=name;
-      form.append(input);
-    }
-    input.value=value;
-  }
-
-  function bindField(doc,id,name){
-    const el=doc.getElementById(id);
-    if(el) el.name=name;
+  function selectFrom(doc,old,values){
+    const el=doc.createElement('select');
+    ['id','name','aria-label'].forEach(a=>{const v=old.getAttribute(a);if(v)el.setAttribute(a,v)});
+    el.required=old.required;
+    const first=doc.createElement('option');first.value='';first.textContent='Escolher';el.append(first);
+    values.forEach(v=>{const o=doc.createElement('option');o.value=v;o.textContent=v;el.append(o)});
+    old.replaceWith(el);
     return el;
   }
 
-  function assertIntegration(form){
-    const missing=[];
-    Object.entries(EXPECTED).forEach(([id,name]) => {
-      const el=form.querySelector(`#${CSS.escape(id)}`);
-      if(!el || el.name!==name) missing.push(`${id}→${name}`);
-    });
-
-    const allergy=form.querySelector('input[name="entry.192985690"]');
-    if(!allergy) missing.push('alergia(sim/não)→entry.192985690');
-
-    const temporary=[...form.elements].filter(el => typeof el.name==='string' && el.name.startsWith('temp_'));
-    if(temporary.length) missing.push('campos temporários sem mapeamento');
-
-    const unnamedRequired=[...form.querySelectorAll('[required]')].filter(el => !el.name);
-    if(unnamedRequired.length) missing.push('campos obrigatórios sem name');
-
-    if(missing.length) throw new Error(`Integração incompleta: ${missing.join(', ')}`);
+  function options(select,values){
+    select.replaceChildren();
+    const first=select.ownerDocument.createElement('option');first.value='';first.textContent='Escolher';select.append(first);
+    values.forEach(v=>{const o=select.ownerDocument.createElement('option');o.value=v;o.textContent=v;select.append(o)});
   }
 
-  function installCourseBanner(doc){
+  function installVisual(doc){
     const style=doc.createElement('style');
     style.textContent=`
-      :root{--cats-navy:#07101f;--cats-blue:#003366;--cats-gold:#ffdd00;--cats-hero:url("${CONFIG.heroImage}")}
+      :root{--cats-navy:#07101f;--cats-blue:#003366;--cats-gold:#ffdd00;--cats-hero:url("${CFG.hero}")}
       html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       body{overflow-x:hidden;background:linear-gradient(180deg,#ece8df 0,#f7f5f0 360px,#f4f1ea 100%)}
       .hero{padding:14px 0 18px}
@@ -163,146 +98,90 @@
       .btn-primary{background:linear-gradient(180deg,#07569f,#003366 58%,#001f3f)!important;color:#fff!important}
       .btn-primary:focus-visible,.btn-secondary:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid rgba(0,86,159,.24);outline-offset:2px}
       .footer{padding-bottom:max(26px,env(safe-area-inset-bottom))}
-      @media(min-width:760px){
-        .hero{padding:22px 0 22px}
-        .hero-card{min-height:270px;padding:30px!important;border-radius:28px!important}
-        .hero-copy{margin-top:46px}
-        .hero-kicker{font-size:12px}
-        .hero-copy p{font-size:16px}
-        .card{padding:26px}.grid{gap:16px}
-      }
-      @media(max-width:420px){
-        .shell{width:min(calc(100% - 20px),var(--max))!important}
-        .hero-card{min-height:218px;padding:18px!important;border-radius:20px!important;background-position:66% center!important}
-        .hero-copy{margin-top:30px}
-        .hero-copy h1{font-size:clamp(1.6rem,8vw,2rem)!important}
-        .hero-copy p{font-size:14px}
-        .form-chip{font-size:11px}
-        .card{padding:15px!important}
-        .section-head{gap:10px}
-        .actions{gap:8px}
-      }
+      @media(min-width:760px){.hero{padding:22px 0}.hero-card{min-height:270px;padding:30px!important;border-radius:28px!important}.hero-copy{margin-top:46px}.hero-kicker{font-size:12px}.hero-copy p{font-size:16px}.card{padding:26px}.grid{gap:16px}}
+      @media(max-width:420px){.shell{width:min(calc(100% - 20px),var(--max))!important}.hero-card{min-height:218px;padding:18px!important;border-radius:20px!important;background-position:66% center!important}.hero-copy{margin-top:30px}.hero-copy h1{font-size:clamp(1.6rem,8vw,2rem)!important}.hero-copy p{font-size:14px}.form-chip{font-size:11px}.card{padding:15px!important}.section-head{gap:10px}.actions{gap:8px}}
       @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
     `;
     doc.head.append(style);
 
     const header=doc.querySelector('header.hero');
-    if(header){
-      header.innerHTML=`
-        <div class="shell">
-          <div class="hero-card">
-            <div class="course-brand"><span class="course-star" aria-hidden="true">★</span><span>CBMMG • CATS 2026</span></div>
-            <div class="hero-copy">
-              <span class="hero-kicker">Inscrição • Pouso Alegre</span>
-              <h1>Curso de Atendimento a Tentativas de <span>Suicídio</span></h1>
-              <p>Preencha os dados de inscrição e o levantamento prévio. O envio é realizado diretamente para o formulário oficial.</p>
-              <div class="form-chips" aria-label="Características do formulário">
-                <span class="form-chip">Interface própria</span>
-                <span class="form-chip">Mobile first</span>
-                <span class="form-chip">Envio ao Google Forms</span>
-              </div>
-            </div>
-          </div>
-        </div>`;
-    }
+    if(header) header.innerHTML=`<div class="shell"><div class="hero-card"><div class="course-brand"><span class="course-star" aria-hidden="true">★</span><span>CBMMG • CATS 2026</span></div><div class="hero-copy"><span class="hero-kicker">Inscrição • Pouso Alegre</span><h1>Curso de Atendimento a Tentativas de <span>Suicídio</span></h1><p>Preencha os dados de inscrição e o levantamento prévio. O envio é realizado diretamente para o formulário oficial.</p><div class="form-chips" aria-label="Características do formulário"><span class="form-chip">Interface própria</span><span class="form-chip">Mobile first</span><span class="form-chip">Envio ao Google Forms</span></div></div></div></div>`;
   }
 
-  function configureForm(doc,form){
-    form.action=CONFIG.formAction;
+  function configure(doc,form){
+    form.action=CFG.action;
     form.method='POST';
-    form.target=CONFIG.target;
+    form.target=CFG.target;
     form.enctype='application/x-www-form-urlencoded';
-    form.autocomplete='on';
 
-    Object.entries(EXPECTED).forEach(([id,name]) => bindField(doc,id,name));
+    Object.entries(MAP).forEach(([id,name])=>{const el=doc.getElementById(id);if(el)el.name=name});
 
     let posto=doc.getElementById('posto');
-    if(posto && posto.tagName!=='SELECT') posto=makeSelect(doc,posto,POSTOS);
-    if(posto) posto.name=EXPECTED.posto;
+    if(posto&&posto.tagName!=='SELECT')posto=selectFrom(doc,posto,POSTOS);
+    if(posto)posto.name=MAP.posto;
 
     let tempo=doc.getElementById('tempo');
-    if(tempo && tempo.tagName!=='SELECT') tempo=makeSelect(doc,tempo,TEMPO);
-    if(tempo) tempo.name=EXPECTED.tempo;
+    if(tempo&&tempo.tagName!=='SELECT')tempo=selectFrom(doc,tempo,TEMPO);
+    if(tempo)tempo.name=MAP.tempo;
 
     const ocorrencia=doc.getElementById('ocorrencia');
-    if(ocorrencia){
-      ocorrencia.name=EXPECTED.ocorrencia;
-      setOptions(ocorrencia,OCORRENCIAS);
-    }
-
+    if(ocorrencia){ocorrencia.name=MAP.ocorrencia;options(ocorrencia,OCORRENCIAS)}
     const presenciou=doc.getElementById('presenciou');
-    if(presenciou){
-      presenciou.name=EXPECTED.presenciou;
-      setOptions(presenciou,PRESENCIOU);
-    }
+    if(presenciou){presenciou.name=MAP.presenciou;options(presenciou,PRESENCIOU)}
 
-    doc.querySelectorAll('input[name="temp_clinical_16"]').forEach(el => { el.name='entry.327261555'; });
+    doc.querySelectorAll('input[name="temp_clinical_16"]').forEach(el=>{el.name='entry.327261555'});
+    hidden(doc,form,'fvv','1');
+    hidden(doc,form,'pageHistory','0,1,2,3');
+    hidden(doc,form,'submit','Submit');
 
-    ensureHidden(doc,form,'fvv','1');
-    ensureHidden(doc,form,'pageHistory','0,1,2,3');
-    ensureHidden(doc,form,'submit','Submit');
-
-    const cpf=doc.getElementById('cpf');
-    if(cpf){cpf.autocomplete='off';cpf.inputMode='numeric';cpf.spellcheck=false;}
-
-    const registro=doc.getElementById('registro');
-    if(registro){registro.autocomplete='off';registro.spellcheck=false;}
-
-    assertIntegration(form);
+    const cpf=doc.getElementById('cpf');if(cpf){cpf.autocomplete='off';cpf.inputMode='numeric';cpf.spellcheck=false}
+    const registro=doc.getElementById('registro');if(registro){registro.autocomplete='off';registro.spellcheck=false}
   }
 
-  function installRuntimeGuards(doc,form){
-    const status=doc.getElementById('configState');
-    if(status) status.textContent='Integração com o Google Forms verificada nesta página.';
+  function validateMapping(doc,form){
+    const missing=[];
+    Object.entries(MAP).forEach(([id,name])=>{const el=doc.getElementById(id);if(!el||el.name!==name)missing.push(`${id}→${name}`)});
+    if(!form.querySelector('input[name="entry.192985690"]'))missing.push('campo de alergia');
+    if([...form.elements].some(el=>typeof el.name==='string'&&el.name.startsWith('temp_')))missing.push('campo temporário');
+    if([...form.querySelectorAll('[required]')].some(el=>!el.name))missing.push('campo obrigatório sem name');
+    if(missing.length)throw new Error(`Integração incompleta: ${missing.join(', ')}`);
+  }
+
+  function installRuntime(doc,form){
+    const state=doc.getElementById('configState');
+    if(state)state.textContent='Integração com o Google Forms verificada nesta página.';
 
     const success=doc.getElementById('success');
     if(success){
-      const h=success.querySelector('h2');
-      const p=success.querySelector('p');
-      if(h) h.textContent='Envio concluído';
-      if(p) p.textContent='As respostas foram encaminhadas ao formulário oficial.';
+      const h=success.querySelector('h2');const p=success.querySelector('p');
+      if(h)h.textContent='Envio concluído';
+      if(p)p.textContent='As respostas foram encaminhadas ao formulário oficial.';
     }
 
-    ['posto','tempo','ocorrencia','presenciou'].forEach(id => {
-      const el=doc.getElementById(id);
-      if(!el) return;
-      el.addEventListener('change',() => {
-        el.classList.remove('invalid');
-        const error=el.closest('.field')?.querySelector('.error');
-        if(error) error.textContent='';
-      });
+    ['posto','tempo','ocorrencia','presenciou'].forEach(id=>{
+      const el=doc.getElementById(id);if(!el)return;
+      el.addEventListener('change',()=>{el.classList.remove('invalid');const err=el.closest('.field')?.querySelector('.error');if(err)err.textContent=''})
     });
 
-    let locked=false;
-    form.addEventListener('submit',event => {
-      if(locked){
+    form.addEventListener('submit',event=>{
+      if(event.defaultPrevented)return;
+      if([...form.elements].some(el=>typeof el.name==='string'&&el.name.startsWith('temp_'))){
         event.preventDefault();
-        return;
-      }
-      const temporary=[...form.elements].some(el => typeof el.name==='string' && el.name.startsWith('temp_'));
-      if(temporary){
-        event.preventDefault();
-        locked=false;
         alert('O formulário precisa ser atualizado antes do envio.');
-        return;
       }
-      locked=true;
-      setTimeout(() => { locked=false; },12000);
-    },true);
+    });
   }
 
-  frame.addEventListener('load',() => {
+  frame.addEventListener('load',()=>{
     try{
       const doc=frame.contentDocument;
-      if(!doc) throw new Error('Documento interno indisponível');
-      const form=doc.getElementById('catsForm');
-      if(!form) throw new Error('Estrutura do formulário não encontrada');
-
+      const form=doc?.getElementById('catsForm');
+      if(!doc||!form)throw new Error('Estrutura do formulário não encontrada');
       doc.title='CATS 2026 | Inscrição';
-      installCourseBanner(doc);
-      configureForm(doc,form);
-      installRuntimeGuards(doc,form);
-
+      installVisual(doc);
+      configure(doc,form);
+      validateMapping(doc,form);
+      installRuntime(doc,form);
       boot.hidden=true;
       frame.classList.add('ready');
     }catch(error){
