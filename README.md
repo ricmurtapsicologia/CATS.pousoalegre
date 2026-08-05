@@ -1,19 +1,24 @@
-# CATS — Inscrição personalizada
+# CATS 2026 — Inscrição personalizada
 
-Página customizada para inscrição no Curso de Atendimento a Tentativas de Suicídio (CATS), com interface própria e integração preparada para envio ao Google Forms.
+Página responsiva para inscrição e levantamento prévio do CATS 2026, com interface própria e envio ao Google Forms sem exibir a interface do Google ao participante.
 
-## Estrutura
+## Arquitetura
 
-- `index.html`: aplicação web responsiva, em etapas.
-- Integração: Google Forms via `formResponse` em iframe oculto.
-- Sem elementos visuais do Google Forms para o participante.
+- `index.html`: camada principal mobile-first e adaptadora da interface.
+- `legacy.html`: preserva a implementação funcional e o conteúdo já existente do formulário.
+- `assets/cats2026-banner.webp`: banner oficial exibido no cabeçalho.
+- Google Forms: envio por `POST` ao endpoint `formResponse`, usando iframe oculto.
 
-## Situação da integração
+A camada principal converte os campos de Posto/Graduação e Tempo de Serviço em listas suspensas, configura as listas de experiência prévia e exposição a ocorrências, e aplica os identificadores Google Forms que faltavam (`entry.500885681` e `entry.327261555`). Também acrescenta os metadados de navegação do Forms necessários ao envio das seções.
 
-Os campos administrativos já estão mapeados para os `entry.xxxxx` fornecidos pelo formulário. Dois identificadores não vieram no link pré-preenchido recebido: o campo sobre experiência prévia em ocorrência e o item clínico de irritabilidade. O bloco clínico está estruturado, mas o conteúdo literal do instrumento padronizado não é redistribuído neste repositório.
+## Responsividade
 
-A interface impede envio enquanto a configuração obrigatória estiver incompleta, evitando respostas parciais ou corrompidas.
+A interface foi ajustada em abordagem mobile-first, com controles de no mínimo 48 px, tipografia adequada a telas pequenas e expansão progressiva para tablets e desktops.
 
-## GitHub Pages
+## Publicação
 
-Após os arquivos estarem no branch `main`, em **Settings → Pages**, selecione **Deploy from a branch**, branch `main`, pasta `/ (root)`.
+O GitHub Pages deve usar o branch `main` e a pasta `/ (root)`.
+
+## Validação operacional
+
+Como o envio ocorre entre origens diferentes, o navegador não permite que a página leia o conteúdo da resposta retornada pelo Google. Antes da divulgação definitiva, deve ser realizada uma submissão controlada e confirmada diretamente na aba **Respostas** do Google Forms ou na planilha vinculada.
