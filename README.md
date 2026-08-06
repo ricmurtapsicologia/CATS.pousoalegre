@@ -6,7 +6,7 @@ Página responsiva de boas-vindas e levantamento prévio do CATS 2026 em Pouso A
 
 A renderização foi refatorada para eliminar o iframe visual que causava divergência entre a página publicada e o conteúdo atualizado. O `index.html` agora carrega o formulário-base de `legacy.html` com `fetch`, aplica as adaptações antes da renderização e escreve o resultado no DOM principal da página. Dessa forma, o banner, o formulário e os estilos passam a existir no mesmo documento visual, evitando sobreposição de CSS entre dois contextos de página.
 
-Build atual: `2026.08.06-r2`.
+Build atual: `2026.08.06-r3`.
 
 O build também é registrado em `<meta name="cats-build">` e em `data-cats-build` no elemento `<html>`, permitindo identificar objetivamente qual versão foi publicada pelo GitHub Pages.
 
@@ -17,7 +17,7 @@ A versão atual do hero utiliza uma única ocorrência de `VIII`:
 - identificação institucional: `CBMMG • 7ª Cia Ind - Pouso Alegre`;
 - edição: `Boas-vindas • VIII Edição`;
 - título: `Curso de Atendimento a Tentativas de Suicídio`;
-- abertura: `Seja bem-vindo(a).`;
+- abertura: `Caros abordadores e abordadoras, sejam bem-vindos.`;
 - assinatura: `Lucas Antônio de Oliveira, Capitão BM — Coordenador do CATS`.
 
 A duplicação de `VIII` foi removida do texto de boas-vindas e da assinatura.
@@ -68,7 +68,7 @@ URL pública:
 
 `https://ricmurtapsicologia.github.io/CATS.pousoalegre/`
 
-Se a página pública não apresentar `7ª Cia Ind - Pouso Alegre` e o build `2026.08.06-r2`, a causa deve ser investigada no processo de publicação do GitHub Pages, e não no HTML atual do branch `main`.
+Se a página pública não apresentar `7ª Cia Ind - Pouso Alegre` e o build `2026.08.06-r3`, a causa deve ser investigada no processo de publicação do GitHub Pages, e não no HTML atual do branch `main`.
 
 ## Privacidade
 
