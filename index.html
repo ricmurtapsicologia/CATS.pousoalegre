@@ -7,134 +7,107 @@
   <meta name="robots" content="noindex,noarchive">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="description" content="Boas-vindas e levantamento prévio do VIII CATS 2026 em Pouso Alegre — CBMMG.">
-
+  <meta name="cats-build" content="2026.08.06-r2">
   <title>VIII CATS 2026 | Boas-vindas — Pouso Alegre</title>
   <link rel="canonical" href="https://ricmurtapsicologia.github.io/CATS.pousoalegre/">
-  <link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="%2307101f"/><path d="M32 11l5.2 10.5L49 23.2l-8.5 8.3 2 11.7L32 37.7 21.5 43.2l2-11.7L15 23.2l11.8-1.7z" fill="%23ffdd00"/></svg>'>
-
   <meta property="og:locale" content="pt_BR">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="VIII CATS 2026 | CBMMG">
   <meta property="og:title" content="VIII CATS 2026 | Boas-vindas — Pouso Alegre">
-  <meta property="og:description" content="Boas-vindas aos alunos e levantamento prévio do VIII Curso de Atendimento a Tentativas de Suicídio — CBMMG.">
+  <meta property="og:description" content="Boas-vindas aos alunos e levantamento prévio do VIII CATS 2026 — CBMMG.">
   <meta property="og:url" content="https://ricmurtapsicologia.github.io/CATS.pousoalegre/">
   <meta property="og:image" content="https://i.pinimg.com/736x/56/4d/63/564d63712210ee0e48975b8c57392db7.jpg">
-  <meta property="og:image:secure_url" content="https://i.pinimg.com/736x/56/4d/63/564d63712210ee0e48975b8c57392db7.jpg">
-  <meta property="og:image:alt" content="Bombeiros militares em ambiente operacional">
-
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="VIII CATS 2026 | Boas-vindas — Pouso Alegre">
   <meta name="twitter:description" content="Boas-vindas e levantamento prévio do VIII CATS 2026 — CBMMG.">
   <meta name="twitter:image" content="https://i.pinimg.com/736x/56/4d/63/564d63712210ee0e48975b8c57392db7.jpg">
-
-  <link rel="preconnect" href="https://i.pinimg.com" crossorigin>
-
   <style>
     :root{color-scheme:light;--bg:#f4f1ea;--ink:#17212b;--muted:#66717c}
     *{box-sizing:border-box}
-    html,body{margin:0;width:100%;height:100%;background:var(--bg);overflow:hidden}
+    html,body{margin:0;min-height:100%;background:var(--bg)}
     body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink)}
-    #app{display:block;width:100%;height:100dvh;border:0;opacity:0;transition:opacity .18s ease;background:var(--bg)}
-    #app.ready{opacity:1}
-    #boot{position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;font:650 14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--muted);background:var(--bg)}
-    #boot[hidden]{display:none}
-    @media(prefers-reduced-motion:reduce){#app{transition:none}}
+    #boot{min-height:100dvh;display:grid;place-items:center;padding:24px;text-align:center;font:650 14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--muted);background:var(--bg)}
   </style>
 </head>
 <body>
   <div id="boot" role="status" aria-live="polite">Carregando formulário…</div>
-  <iframe id="app" src="legacy.html" title="VIII CATS 2026 — levantamento prévio em Pouso Alegre" referrerpolicy="same-origin"></iframe>
-
 <script>
-(() => {
+(async()=>{
   'use strict';
-
-  const CFG = Object.freeze({
-    title:'VIII CATS 2026 | Boas-vindas — Pouso Alegre',
-    hero:'https://i.pinimg.com/736x/29/42/2a/29422ad8bed8166ef119bcef4792218f.jpg'
-  });
-
-  const frame=document.getElementById('app');
-  const boot=document.getElementById('boot');
-
+  const BUILD='2026.08.06-r2';
+  const HERO='https://i.pinimg.com/736x/29/42/2a/29422ad8bed8166ef119bcef4792218f.jpg';
   const POSTOS=['Cel','Ten Cel','Maj','Cap','1º Ten','2º Ten','Asp-a-Of.','Cad','Subten','1º Sgt','2º Sgt','3º Sgt','Cb','Sd'];
   const TEMPO=['até 5 anos.','de 5 a 10 anos.','De 10 a 15 anos.','De 15 a 20 anos.','de 20 a 25 anos.','Mais de 25 anos de serviço.'];
   const OCORRENCIAS=['Nunca participei.','Sim, de 01 a 05 ocorrências','Sim, de 06 a 10 ocorrências','Sim, em mais de 11 ocorrências'];
   const PRESENCIOU=['Nunca presenciei.','Sim, de 01 a 05 suicídios completos.','Sim, de 06 a 10 suicídios completos.','Sim, em mais de 11 suicídios completos.'];
 
-  function makeSelect(doc,old,values){
-    const select=doc.createElement('select');
-    for(const attr of ['id','name']) if(old.getAttribute(attr)) select.setAttribute(attr,old.getAttribute(attr));
-    if(old.required) select.required=true;
-    select.setAttribute('aria-label',old.getAttribute('aria-label')||old.id||'Seleção');
-    const first=doc.createElement('option');
-    first.value='';
-    first.textContent='Escolher';
-    select.append(first);
-    values.forEach(v=>{
-      const option=doc.createElement('option');
-      option.value=v;
-      option.textContent=v;
-      select.append(option);
-    });
-    old.replaceWith(select);
-    return select;
-  }
+  const boot=document.getElementById('boot');
 
-  function setOptions(select,values){
-    select.replaceChildren();
-    const first=select.ownerDocument.createElement('option');
-    first.value='';
-    first.textContent='Escolher';
-    select.append(first);
-    values.forEach(v=>{
-      const option=select.ownerDocument.createElement('option');
-      option.value=v;
-      option.textContent=v;
-      select.append(option);
-    });
+  function setSelect(doc,id,values,name){
+    const old=doc.getElementById(id);
+    if(!old)return;
+    const select=doc.createElement('select');
+    select.id=id;
+    select.name=name||old.getAttribute('name')||'';
+    select.required=old.required;
+    select.setAttribute('aria-label',old.getAttribute('aria-label')||id);
+    const first=doc.createElement('option');
+    first.value=''; first.textContent='Escolher'; select.append(first);
+    values.forEach(v=>{const o=doc.createElement('option');o.value=v;o.textContent=v;select.append(o)});
+    old.replaceWith(select);
   }
 
   function hidden(doc,form,name,value){
     let el=form.querySelector(`input[name="${name}"]`);
-    if(!el){
-      el=doc.createElement('input');
-      el.type='hidden';
-      el.name=name;
-      form.append(el);
-    }
+    if(!el){el=doc.createElement('input');el.type='hidden';el.name=name;form.append(el)}
     el.value=value;
   }
 
-  function installVisual(doc){
+  try{
+    const response=await fetch(`legacy.html?v=${encodeURIComponent(BUILD)}`,{cache:'no-store'});
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    const html=await response.text();
+    const doc=new DOMParser().parseFromString(html,'text/html');
+    const form=doc.getElementById('catsForm');
+    if(!form)throw new Error('Formulário não encontrado');
+
+    doc.title='VIII CATS 2026 | Boas-vindas — Pouso Alegre';
+    doc.documentElement.dataset.catsBuild=BUILD;
+
+    const oldMeta=doc.querySelector('meta[name="description"]');
+    if(oldMeta)oldMeta.content='Boas-vindas e levantamento prévio do VIII CATS 2026 em Pouso Alegre — CBMMG.';
+    const buildMeta=doc.createElement('meta');
+    buildMeta.name='cats-build'; buildMeta.content=BUILD; doc.head.append(buildMeta);
+
     const style=doc.createElement('style');
     style.textContent=`
-      :root{--cats-navy:#07101f;--cats-blue:#003366;--cats-gold:#ffdd00;--cats-hero:url("${CFG.hero}")}
+      :root{--cats-navy:#07101f;--cats-blue:#003366;--cats-gold:#ffdd00;--cats-hero:url("${HERO}")}
       html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
-      body{overflow-x:hidden;background:linear-gradient(180deg,#ece8df 0,#f7f5f0 360px,#f4f1ea 100%)}
-      .hero{padding:14px 0 18px}
-      .hero-card{position:relative;min-height:344px;display:flex!important;flex-direction:column;justify-content:space-between;padding:22px!important;overflow:hidden!important;border:1px solid rgba(255,255,255,.11)!important;border-radius:24px!important;background:linear-gradient(105deg,rgba(0,0,0,.88),rgba(0,0,0,.58) 54%,rgba(0,0,0,.88)),var(--cats-hero) 62% center/cover no-repeat!important;box-shadow:0 24px 60px rgba(3,8,16,.28)!important;color:#fff!important}
+      body{overflow-x:hidden;background:linear-gradient(180deg,#ece8df 0,#f7f5f0 390px,#f4f1ea 100%)}
+      .hero{padding:14px 0 20px}
+      .hero-card{position:relative!important;display:block!important;height:auto!important;min-height:0!important;padding:clamp(20px,5vw,34px)!important;overflow:hidden!important;border:1px solid rgba(255,255,255,.12)!important;border-radius:24px!important;background:linear-gradient(108deg,rgba(0,0,0,.90),rgba(0,0,0,.62) 55%,rgba(0,0,0,.86)),var(--cats-hero) 64% center/cover no-repeat!important;box-shadow:0 24px 60px rgba(3,8,16,.28)!important;color:#fff!important}
       .hero-card:after{display:none!important}
-      .course-brand{display:flex;align-items:center;gap:8px;color:rgba(255,255,255,.92);font-size:11px;font-weight:850;letter-spacing:.085em;text-transform:uppercase}
+      .course-brand{display:flex;align-items:center;gap:9px;color:rgba(255,255,255,.94);font-size:12px;font-weight:850;line-height:1.35;letter-spacing:.075em;text-transform:uppercase}
       .course-star{color:var(--cats-gold);font-size:16px;line-height:1}
-      .hero-copy{max-width:720px;margin-top:34px}
-      .hero-kicker{display:block;margin-bottom:13px;color:var(--cats-gold);font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
-      .hero-copy h1{max-width:680px;margin:0 0 20px;color:#fff!important;font-size:clamp(1.75rem,8vw,2.65rem)!important;line-height:1.02!important;letter-spacing:-.045em;text-shadow:0 6px 24px rgba(0,0,0,.58)}
+      .hero-copy{max-width:720px;display:grid;gap:0;margin-top:clamp(30px,7vw,48px)}
+      .hero-kicker{display:block;margin:0 0 14px;color:var(--cats-gold);font-size:12px;font-weight:900;line-height:1.35;letter-spacing:.11em;text-transform:uppercase}
+      .hero-copy h1{max-width:680px;margin:0 0 24px!important;color:#fff!important;font-size:clamp(1.78rem,7.2vw,2.7rem)!important;line-height:1.12!important;letter-spacing:-.025em!important;text-wrap:balance;text-shadow:0 6px 24px rgba(0,0,0,.58)}
       .hero-copy h1 span{color:var(--cats-gold)}
-      .hero-message{max-width:680px;display:grid;gap:12px}
-      .hero-copy p{max-width:680px;margin:0;color:rgba(255,255,255,.9)!important;font-size:15px;line-height:1.58;text-shadow:0 3px 12px rgba(0,0,0,.38)}
-      .hero-welcome{font-weight:760;color:#fff!important}
-      .hero-required{display:inline-flex;align-items:center;width:fit-content;max-width:100%;margin-top:2px!important;padding:8px 11px;border:1px solid rgba(255,221,0,.34);border-radius:10px;background:rgba(255,221,0,.10);color:#fff!important;font-size:13px!important;line-height:1.35!important}
+      .hero-message{max-width:670px;display:grid;gap:14px}
+      .hero-copy p{max-width:670px;margin:0!important;color:rgba(255,255,255,.91)!important;font-size:15px!important;line-height:1.62!important;text-shadow:0 3px 12px rgba(0,0,0,.38)}
+      .hero-welcome{font-weight:780;color:#fff!important}
+      .hero-required{display:inline-flex;align-items:center;width:fit-content;max-width:100%;margin-top:1px!important;padding:8px 11px;border:1px solid rgba(255,221,0,.38);border-radius:10px;background:rgba(255,221,0,.10);font-size:13px!important;line-height:1.35!important}
       .hero-required strong{color:var(--cats-gold);font-weight:900}
-      .hero-signature{display:grid;gap:2px;margin-top:21px;padding-top:15px;border-top:1px solid rgba(255,255,255,.16);color:rgba(255,255,255,.82);font-size:12.5px;line-height:1.4;text-shadow:0 3px 12px rgba(0,0,0,.38)}
-      .hero-signature strong{color:#fff;font-size:13.5px;font-weight:850}
-      .hero-signature .role{margin-top:1px;color:rgba(255,255,255,.76)}
+      .hero-signature{display:grid;gap:4px;margin-top:24px;padding-top:17px;border-top:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.82);font-size:12.5px;line-height:1.48;text-shadow:0 3px 12px rgba(0,0,0,.38)}
+      .hero-signature strong{color:#fff;font-size:13.5px;font-weight:850;line-height:1.45}
+      .hero-signature .role{color:rgba(255,255,255,.76)}
       .progress-wrap{top:0!important;z-index:20!important;background:rgba(244,241,234,.94)!important;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
       .progress-bar{background:linear-gradient(90deg,var(--cats-blue),var(--cats-gold))!important}
       .card{scroll-margin-top:66px}
       input,select,textarea{min-height:48px;font-size:16px!important}
       textarea{min-height:118px}
-      .choice span{min-height:46px;display:flex!important;align-items:center;font-size:15px!important;line-height:1.4}
+      .choice span{min-height:46px;display:flex!important;align-items:center;font-size:15px!important;line-height:1.45}
+      .choice input:focus-visible+span{outline:3px solid rgba(0,86,159,.25);outline-offset:2px}
       .btn{min-height:48px;touch-action:manipulation}
       .btn-primary{background:linear-gradient(180deg,#07569f,#003366 58%,#001f3f)!important;color:#fff!important}
       .btn-primary:focus-visible,.btn-secondary:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid rgba(0,86,159,.24);outline-offset:2px}
@@ -145,85 +118,44 @@
       .cats-footer-brand span:first-child{color:#c8a900;font-size:14px}
       .cats-footer-copy{margin:0;font-size:12px;line-height:1.55;color:#66717c}
       .cats-footer-copy strong{color:#3b4752;font-weight:800}
-      @media(min-width:760px){.hero{padding:22px 0}.hero-card{min-height:360px;padding:32px!important;border-radius:28px!important}.hero-copy{margin-top:38px}.hero-kicker{font-size:12px}.hero-copy h1{margin-bottom:22px}.hero-message{gap:13px}.hero-copy p{font-size:16px;line-height:1.6}.hero-required{font-size:13.5px!important}.hero-signature{font-size:13px;margin-top:24px;padding-top:16px}.hero-signature strong{font-size:14px}.card{padding:26px}.grid{gap:16px}.cats-footer-panel{padding-top:22px}}
-      @media(max-width:420px){.shell{width:min(calc(100% - 20px),var(--max))!important}.hero-card{min-height:430px;padding:20px!important;border-radius:20px!important;background-position:66% center!important}.hero-copy{margin-top:28px}.hero-kicker{margin-bottom:12px}.hero-copy h1{font-size:clamp(1.6rem,8vw,2rem)!important;margin-bottom:18px}.hero-message{gap:11px}.hero-copy p{font-size:14px;line-height:1.55}.hero-required{font-size:12.5px!important;padding:7px 9px}.hero-signature{font-size:12px;margin-top:18px;padding-top:13px}.hero-signature strong{font-size:12.8px}.card{padding:15px!important}.section-head{gap:10px}.actions{gap:8px}.cats-footer-copy{font-size:11.5px}}
+      @media(min-width:760px){.hero{padding:22px 0}.hero-card{border-radius:28px!important}.hero-copy p{font-size:16px!important}.hero-signature{font-size:13px}.hero-signature strong{font-size:14px}.card{padding:26px}.grid{gap:16px}.cats-footer-panel{padding-top:22px}}
+      @media(max-width:420px){.shell{width:min(calc(100% - 20px),var(--max))!important}.hero-card{padding:20px!important;border-radius:20px!important;background-position:68% center!important}.hero-copy{margin-top:30px}.hero-kicker{margin-bottom:13px;font-size:11.5px}.hero-copy h1{font-size:clamp(1.72rem,8vw,2.02rem)!important;line-height:1.13!important;margin-bottom:22px!important}.hero-message{gap:13px}.hero-copy p{font-size:14px!important;line-height:1.62!important}.hero-required{font-size:12.5px!important;padding:7px 9px}.hero-signature{font-size:12px;margin-top:21px;padding-top:15px}.hero-signature strong{font-size:12.8px}.card{padding:15px!important}.section-head{gap:10px}.actions{gap:8px}.cats-footer-copy{font-size:11.5px}}
       @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
     `;
     doc.head.append(style);
 
     const header=doc.querySelector('header.hero');
-    if(header) header.innerHTML=`<div class="shell"><div class="hero-card"><div class="course-brand"><span class="course-star" aria-hidden="true">★</span><span>CBMMG • 7ª Cia Ind - Pouso Alegre</span></div><div class="hero-copy"><span class="hero-kicker">Boas-vindas • VIII Edição</span><h1>Curso de Atendimento a Tentativas de <span>Suicídio</span></h1><div class="hero-message"><p class="hero-welcome">Seja bem-vindo(a) ao VIII CATS.</p><p>Antes de começarmos, reserve alguns minutos para preencher o formulário a seguir. Suas respostas nos ajudam a conhecer melhor a turma e a preparar uma experiência de aprendizagem mais direcionada, relevante e próxima das necessidades dos participantes.</p><p class="hero-required"><strong>Preenchimento obrigatório</strong></p></div><div class="hero-signature"><span>Cordialmente,</span><strong>Lucas Antônio de Oliveira, Capitão BM</strong><span class="role">Coordenador do VIII CATS</span></div></div></div></div>`;
-  }
-
-  function installFooter(doc){
-    const footer=doc.querySelector('footer.footer');
-    if(!footer)return;
-    footer.className='shell footer cats-footer';
-    footer.setAttribute('aria-label','Informações institucionais e direitos autorais');
-    footer.innerHTML=`<div class="cats-footer-panel"><div class="cats-footer-brand"><span aria-hidden="true">★</span><span>CBMMG • VIII CATS 2026</span></div><p class="cats-footer-copy"><strong>© 2026 CBMMG — Equipe de Coordenação do CATS.</strong><br>Todos os direitos reservados.</p></div>`;
-  }
-
-  frame.addEventListener('load',()=>{
-    try{
-      const doc=frame.contentDocument;
-      const form=doc?.getElementById('catsForm');
-      if(!doc||!form) throw new Error('Estrutura do formulário não encontrada');
-
-      doc.title=CFG.title;
-      installVisual(doc);
-      installFooter(doc);
-
-      const posto=doc.getElementById('posto');
-      if(posto&&posto.tagName!=='SELECT') makeSelect(doc,posto,POSTOS);
-
-      const tempo=doc.getElementById('tempo');
-      if(tempo&&tempo.tagName!=='SELECT') makeSelect(doc,tempo,TEMPO);
-
-      const ocorrencia=doc.getElementById('ocorrencia');
-      if(ocorrencia){
-        ocorrencia.name='entry.500885681';
-        setOptions(ocorrencia,OCORRENCIAS);
-      }
-
-      const presenciou=doc.getElementById('presenciou');
-      if(presenciou){
-        presenciou.name='entry.212330805';
-        setOptions(presenciou,PRESENCIOU);
-      }
-
-      doc.querySelectorAll('input[name="temp_clinical_16"]').forEach(el=>el.name='entry.327261555');
-
-      hidden(doc,form,'fvv','1');
-      hidden(doc,form,'pageHistory','0,1,2,3');
-      hidden(doc,form,'submit','Submit');
-
-      const success=doc.getElementById('success');
-      if(success){
-        const h=success.querySelector('h2');
-        const p=success.querySelector('p');
-        if(h) h.textContent='Envio concluído';
-        if(p) p.textContent='As respostas foram encaminhadas ao formulário oficial.';
-      }
-
-      const state=doc.getElementById('configState');
-      if(state) state.textContent='Formulário pronto para envio.';
-
-      ['posto','tempo','ocorrencia','presenciou'].forEach(id=>{
-        const el=doc.getElementById(id);
-        if(el) el.addEventListener('change',()=>{
-          el.classList.remove('invalid');
-          const error=el.closest('.field')?.querySelector('.error');
-          if(error) error.textContent='';
-        });
-      });
-
-      boot.hidden=true;
-      frame.classList.add('ready');
-    }catch(error){
-      boot.textContent='Não foi possível preparar o formulário. Atualize a página.';
-      console.error('[CATS]',error);
+    if(header){
+      header.innerHTML=`<div class="shell"><div class="hero-card"><div class="course-brand"><span class="course-star" aria-hidden="true">★</span><span>CBMMG • 7ª Cia Ind - Pouso Alegre</span></div><div class="hero-copy"><span class="hero-kicker">Boas-vindas • VIII Edição</span><h1>Curso de Atendimento a Tentativas de <span>Suicídio</span></h1><div class="hero-message"><p class="hero-welcome">Seja bem-vindo(a).</p><p>Antes de começarmos, reserve alguns minutos para preencher o formulário a seguir. Suas respostas nos ajudam a conhecer melhor a turma e a preparar uma experiência de aprendizagem mais direcionada e relevante.</p><p class="hero-required"><strong>Preenchimento obrigatório</strong></p></div><div class="hero-signature"><span>Cordialmente,</span><strong>Lucas Antônio de Oliveira, Capitão BM</strong><span class="role">Coordenador do CATS</span></div></div></div></div>`;
     }
-  });
+
+    setSelect(doc,'posto',POSTOS,'entry.55438016');
+    setSelect(doc,'tempo',TEMPO,'entry.1097052870');
+    setSelect(doc,'ocorrencia',OCORRENCIAS,'entry.500885681');
+    setSelect(doc,'presenciou',PRESENCIOU,'entry.212330805');
+
+    hidden(doc,form,'fvv','1');
+    hidden(doc,form,'pageHistory','0,1,2,3');
+    hidden(doc,form,'submit','Submit');
+
+    const submit=doc.getElementById('submitBtn');
+    if(submit)submit.textContent='Enviar formulário';
+    const success=doc.getElementById('success');
+    if(success){const h=success.querySelector('h2');const p=success.querySelector('p');if(h)h.textContent='Envio concluído';if(p)p.textContent='As respostas foram encaminhadas ao formulário oficial.'}
+    const footer=doc.querySelector('footer.footer');
+    if(footer){footer.className='shell footer cats-footer';footer.innerHTML=`<div class="cats-footer-panel"><div class="cats-footer-brand"><span aria-hidden="true">★</span><span>CBMMG • CATS 2026</span></div><p class="cats-footer-copy"><strong>© 2026 CBMMG — Equipe de Coordenação do CATS.</strong><br>Todos os direitos reservados.</p></div>`}
+
+    const runtime=doc.createElement('script');
+    runtime.textContent=`document.documentElement.dataset.catsBuild='${BUILD}';document.querySelectorAll('input[name="temp_clinical_16"]').forEach(el=>el.name='entry.327261555');document.querySelectorAll('#posto,#tempo,#ocorrencia,#presenciou').forEach(el=>el.addEventListener('change',()=>{el.classList.remove('invalid');const e=el.closest('.field')?.querySelector('.error');if(e)e.textContent=''}));`;
+    doc.body.append(runtime);
+
+    document.open();
+    document.write('<!doctype html>'+doc.documentElement.outerHTML);
+    document.close();
+  }catch(error){
+    console.error('[CATS]',error);
+    boot.textContent='Não foi possível carregar o formulário. Atualize a página.';
+  }
 })();
 </script>
 </body>
