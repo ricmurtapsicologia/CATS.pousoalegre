@@ -17,8 +17,6 @@ Página responsiva de boas-vindas e levantamento prévio do VIII CATS 2026, com 
 - Informações técnicas de implementação permanecem fora da comunicação principal.
 - Rodapé institucional: `© 2026 CBMMG — Equipe de Coordenação do CATS. Todos os direitos reservados.`
 
-O símbolo `©` foi utilizado por ser o sinal adequado para indicação de direitos autorais. O símbolo `®` é reservado à indicação de marca registrada.
-
 ## Compartilhamento em WhatsApp e redes sociais
 
 O `index.html` possui metadados Open Graph e Twitter Card próprios para compartilhamento do link, caracterizando a página como boas-vindas e levantamento prévio do VIII CATS, e não como página de inscrição.
@@ -31,12 +29,18 @@ Foram definidos `og:title`, `og:description`, `og:url`, `og:image`, `og:image:al
 
 Observação: WhatsApp, Facebook e outros serviços podem manter cache do preview de links já compartilhados. Uma alteração no Open Graph pode demorar a aparecer em mensagens que reutilizam a mesma URL.
 
-## Arquitetura
+## Arquitetura atual
 
-- `index.html`: camada de apresentação e adaptação visual da interface.
-- `legacy.html`: preserva a implementação funcional do formulário multipasso e sua configuração de envio.
-- Google Forms: recebe os dados por `POST` no endpoint `formResponse`, através de iframe de resposta oculto.
-- `.nojekyll`: mantém a publicação como conteúdo estático direto no GitHub Pages.
+A publicação foi consolidada na raiz do branch `main`. Não há mais cópia paralela em `/docs` nem pasta local de assets obsoletos.
+
+Arquivos necessários:
+
+- `index.html`: camada de apresentação e adaptação visual da interface;
+- `legacy.html`: implementação funcional do formulário multipasso e configuração de envio;
+- `.nojekyll`: mantém a publicação como conteúdo estático direto no GitHub Pages;
+- `README.md`: documentação técnica do projeto.
+
+O Google Forms recebe os dados por `POST` no endpoint `formResponse`, através de iframe de resposta oculto.
 
 A separação entre a camada visual e o formulário funcional permite evoluir identidade, responsividade e metadados sociais sem reescrever a lógica principal do formulário.
 
@@ -83,7 +87,12 @@ A interface segue abordagem mobile-first:
 
 ## Publicação
 
-O GitHub Pages deve permanecer configurado para o branch `main` e a pasta `/ (root)`.
+A única fonte de publicação prevista é:
+
+- branch: `main`;
+- pasta: `/ (root)`.
+
+Não deve ser utilizada a pasta `/docs` como fonte alternativa, pois ela foi removida para evitar versões concorrentes da página.
 
 URL pública:
 
