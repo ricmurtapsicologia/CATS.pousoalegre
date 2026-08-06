@@ -5,12 +5,15 @@ Página responsiva de boas-vindas e levantamento prévio do VIII CATS 2026, com 
 ## Identidade e apresentação
 
 - Título público: `VIII CATS 2026 | Boas-vindas — Pouso Alegre`.
+- Identificação institucional no hero: `CBMMG • 7ª Cia Ind - Pouso Alegre`.
 - Abertura destinada aos alunos já vinculados à VIII Edição, sem linguagem de inscrição.
 - Mensagem inicial receptiva e objetiva, solicitando o preenchimento obrigatório do formulário de levantamento prévio.
-- Assinatura institucional da abertura: `Lucas Oliveira, Capitão BM — Coordenador do VIII CATS`.
-- Identidade visual alinhada ao ambiente do Curso ATS/CBMMG: azul institucional, fundo escuro no hero e amarelo de destaque.
+- Assinatura institucional da abertura: `Lucas Antônio de Oliveira, Capitão BM — Coordenador do VIII CATS`.
+- Identidade visual alinhada ao ambiente do Curso ATS/CBMMG: fundo operacional escuro, amarelo de destaque e azul institucional nos controles.
 - Hero responsivo com imagem em `background-size: cover`, evitando deformação da fotografia em celular ou desktop.
-- Identificação visual da edição por `VIII Edição`, `Pouso Alegre` e `CBMMG`.
+- O conteúdo do hero foi reorganizado para melhorar a leitura em telas pequenas: maior espaçamento entre identificação, chamada, título, mensagem, obrigatoriedade e assinatura.
+- A mensagem foi dividida em blocos curtos, com destaque próprio para `Preenchimento obrigatório`, reduzindo densidade visual e melhorando a escaneabilidade.
+- A assinatura possui separador visual próprio para distinguir a comunicação institucional do texto de orientação.
 - Informações técnicas de implementação permanecem fora da comunicação principal.
 - Rodapé institucional: `© 2026 CBMMG — Equipe de Coordenação do CATS. Todos os direitos reservados.`
 
@@ -18,9 +21,9 @@ O símbolo `©` foi utilizado por ser o sinal adequado para indicação de direi
 
 ## Compartilhamento em WhatsApp e redes sociais
 
-O `index.html` possui metadados Open Graph e Twitter Card próprios para compartilhamento do link, atualizados para caracterizar a página como boas-vindas e levantamento prévio do VIII CATS, e não como página de inscrição.
+O `index.html` possui metadados Open Graph e Twitter Card próprios para compartilhamento do link, caracterizando a página como boas-vindas e levantamento prévio do VIII CATS, e não como página de inscrição.
 
-A imagem social utilizada é a mesma fotografia operacional selecionada na página do Curso ATS:
+A imagem social utilizada é a fotografia operacional selecionada para a página:
 
 `https://i.pinimg.com/736x/56/4d/63/564d63712210ee0e48975b8c57392db7.jpg`
 
@@ -33,6 +36,7 @@ Observação: WhatsApp, Facebook e outros serviços podem manter cache do previe
 - `index.html`: camada de apresentação e adaptação visual da interface.
 - `legacy.html`: preserva a implementação funcional do formulário multipasso e sua configuração de envio.
 - Google Forms: recebe os dados por `POST` no endpoint `formResponse`, através de iframe de resposta oculto.
+- `.nojekyll`: mantém a publicação como conteúdo estático direto no GitHub Pages.
 
 A separação entre a camada visual e o formulário funcional permite evoluir identidade, responsividade e metadados sociais sem reescrever a lógica principal do formulário.
 
@@ -40,7 +44,7 @@ Não foram adicionados frameworks de interface ou bibliotecas JavaScript externa
 
 ## Integração com Google Forms
 
-A configuração de integração foi restaurada ao comportamento anterior que já existia no projeto, preservando o formulário funcional original em `legacy.html`.
+A configuração de integração preserva o comportamento funcional já utilizado no projeto, mantendo o formulário original em `legacy.html`.
 
 O `index.html` não reescreve globalmente os identificadores dos campos nem força uma nova configuração do `action`, `method`, `target` e `enctype`. Ele realiza apenas as adaptações específicas já utilizadas no projeto:
 
@@ -72,7 +76,10 @@ A interface segue abordagem mobile-first:
 - suporte a `prefers-reduced-motion`;
 - `viewport-fit=cover` e respeito à safe area no rodapé;
 - contraste reforçado nos elementos principais;
-- hero ampliado de forma responsiva para acomodar a mensagem de boas-vindas e a assinatura sem sobreposição.
+- hero ampliado de forma responsiva para acomodar a mensagem de boas-vindas e a assinatura sem sobreposição;
+- maior `line-height` e separação vertical entre os blocos textuais no mobile;
+- destaque visual específico para a obrigatoriedade do preenchimento;
+- assinatura institucional separada por linha divisória sutil.
 
 ## Publicação
 
@@ -86,6 +93,6 @@ O nome do repositório não foi alterado para preservar a URL pública já distr
 
 ## Validação operacional
 
-O arquivo `legacy.html` permanece responsável pela integração funcional com o Google Forms. A alteração da abertura foi feita no `index.html`, preservando os mapeamentos e o envio já existentes.
+O arquivo `legacy.html` permanece responsável pela integração funcional com o Google Forms. As alterações de apresentação são feitas no `index.html`, preservando os mapeamentos e o envio já existentes.
 
 Como o envio ocorre entre origens diferentes, o navegador não consegue confirmar pelo conteúdo da resposta se o Google Forms registrou efetivamente os dados. A homologação final deve ser feita com uma submissão controlada e conferência direta na aba **Respostas** do Google Forms ou na planilha vinculada.
