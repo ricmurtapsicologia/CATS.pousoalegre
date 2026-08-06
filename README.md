@@ -1,41 +1,80 @@
-# CATS 2026 — Inscrição personalizada
+# CATS 2026 — Inscrição | Pouso Alegre
 
-Página responsiva de inscrição e levantamento prévio do CATS 2026, com interface própria e envio direto ao Google Forms sem incorporar a interface visual do Google.
+Página responsiva para inscrição e levantamento prévio do CATS 2026, com interface própria e envio ao Google Forms sem exibir a interface do Google ao participante.
+
+## Identidade e apresentação
+
+- Título público: `CATS 2026 | Inscrição — Pouso Alegre`.
+- Identidade visual alinhada ao ambiente do Curso ATS/CBMMG: azul institucional, fundo escuro no hero e amarelo de destaque.
+- Hero responsivo com imagem em `background-size: cover`, evitando deformação da fotografia em celular ou desktop.
+- Informações técnicas de implementação foram retiradas da comunicação principal e substituídas por identificação institucional e contexto do formulário.
+- Rodapé institucional: `© 2026 CBMMG — Equipe de Coordenação do CATS. Todos os direitos reservados.`
+
+O símbolo `©` foi utilizado por ser o sinal adequado para indicação de direitos autorais. O símbolo `®` é reservado à indicação de marca registrada.
+
+## Compartilhamento em WhatsApp e redes sociais
+
+O `index.html` possui metadados Open Graph e Twitter Card próprios para compartilhamento do link.
+
+A imagem social utilizada é a mesma fotografia operacional selecionada na página do Curso ATS:
+
+`https://i.pinimg.com/736x/56/4d/63/564d63712210ee0e48975b8c57392db7.jpg`
+
+Foram definidos `og:title`, `og:description`, `og:url`, `og:image`, `og:image:alt`, `twitter:card`, `twitter:title`, `twitter:description` e `twitter:image`.
+
+Observação: WhatsApp, Facebook e outros serviços podem manter cache do preview de links já compartilhados. Uma alteração no Open Graph pode demorar a aparecer em mensagens que reutilizam a mesma URL.
 
 ## Arquitetura
 
-- `index.html`: camada adaptadora, validação de integração, identidade visual e ajustes mobile-first.
-- `legacy.html`: preserva o conteúdo e a lógica funcional do formulário.
-- Google Forms: recebe os dados por `POST` no endpoint oficial `formResponse`, por meio de iframe de resposta oculto.
-- O navegador não grava respostas em `localStorage`, `sessionStorage` nem no repositório.
+- `index.html`: camada principal, responsável pela identidade visual, metadados sociais, configuração da integração, validações de mapeamento e adaptação da interface.
+- `legacy.html`: preserva a implementação funcional e o conteúdo original do formulário multipasso.
+- Google Forms: recebe os dados por `POST` no endpoint `formResponse`, através de iframe de resposta oculto.
 
-A solução permanece deliberadamente sem framework JavaScript. Para uma página estática hospedada no GitHub Pages, JavaScript nativo reduz dependências, superfície de falha, peso de carregamento e manutenção sem perder funcionalidade.
+A separação entre a camada adaptadora e o formulário funcional reduz o risco de regressão na integração enquanto permite evoluir design e identidade visual sem reescrever toda a lógica do formulário.
 
-## Identidade visual
+Não foram adicionados frameworks de interface ou bibliotecas JavaScript externas. Para uma página estática hospedada no GitHub Pages, HTML, CSS e JavaScript nativos reduzem dependências, peso, superfície de falha e custo de manutenção.
 
-O cabeçalho utiliza o mesmo conceito visual da página `Curso-ATS`: fundo escuro institucional, amarelo de destaque e a mesma imagem de hero. A imagem é aplicada como `background-size: cover`, com posicionamento responsivo, evitando deformação ou esticamento em celular e notebook.
+Não há arquitetura de prompt ou modelo generativo em execução nesta página; portanto, adicionar bibliotecas de engenharia de prompt não traria benefício técnico ao projeto.
 
 ## Integração com Google Forms
 
-A camada adaptadora:
+O formulário envia diretamente para:
 
-1. fixa o endpoint oficial do Google Forms;
-2. aplica os identificadores `entry.*` aos campos da interface;
-3. corrige os campos que não possuíam mapeamento direto;
-4. inclui os campos técnicos `fvv`, `pageHistory` e `submit` necessários ao fluxo atual;
-5. impede a inicialização do formulário se houver campo obrigatório sem identificação ou campo temporário sem mapeamento;
-6. mantém o envio por `POST`, evitando que dados pessoais sejam colocados na URL.
+`https://docs.google.com/forms/d/e/1FAIpQLScVj6HESm2cWDN3sNQCaoNOtWSKini7NbSHgiTXemwlyvqAXg/formResponse`
 
-O participante preenche somente a página personalizada. No envio, os valores são encaminhados ao Google Forms correspondente.
+A camada principal mantém o mapeamento explícito dos campos para os respectivos identificadores `entry.*`, incluindo os campos que necessitam de correção dinâmica. Também acrescenta os parâmetros de navegação usados pelo Forms (`fvv`, `pageHistory` e `submit`).
+
+Antes de liberar o envio, a página verifica se existem campos obrigatórios sem `name`, campos temporários ainda não mapeados ou divergências nos identificadores principais. Isso evita falhas silenciosas de integração.
+
+## Privacidade e armazenamento
+
+- O envio é feito por `POST`, evitando colocar as respostas na URL.
+- A página não grava respostas no GitHub.
+- A página não utiliza `localStorage` ou `sessionStorage` para armazenar as respostas do participante.
+- O Google Forms continua sendo o destino dos dados preenchidos.
 
 ## Responsividade e acessibilidade
 
-A página foi ajustada com abordagem mobile-first, controles com altura mínima de 48 px, tipografia de 16 px nos campos, foco visível, `viewport-fit=cover`, suporte a `prefers-reduced-motion` e adaptação específica para telas estreitas.
+A interface segue abordagem mobile-first:
+
+- campos e botões com área de toque mínima adequada;
+- fonte de 16 px nos controles para evitar zoom automático em navegadores móveis;
+- layout adaptável para telas estreitas;
+- foco visível para navegação por teclado;
+- suporte a `prefers-reduced-motion`;
+- `viewport-fit=cover` e respeito à safe area no rodapé;
+- contraste reforçado nos elementos principais.
 
 ## Publicação
 
-O GitHub Pages deve utilizar o branch `main` e a pasta `/ (root)`.
+O GitHub Pages deve permanecer configurado para o branch `main` e a pasta `/ (root)`.
+
+URL pública:
+
+`https://ricmurtapsicologia.github.io/CATS.pousoalegre/`
+
+O nome do repositório não foi alterado para preservar a URL pública já distribuída. A identidade exibida ao usuário, no navegador e no compartilhamento social foi aprimorada sem quebrar links existentes.
 
 ## Validação operacional
 
-Por segurança, não foi criada resposta fictícia no formulário. Como a resposta do Google ocorre em outra origem, a página não consegue confirmar o conteúdo retornado pelo Google Forms. Antes da divulgação definitiva, faça uma submissão controlada com dados de teste autorizados e confirme o registro na aba **Respostas** do formulário ou na planilha vinculada.
+Como o envio ocorre entre origens diferentes, o navegador não permite que a página leia o conteúdo da resposta retornada pelo Google. Antes da divulgação definitiva, deve ser feita uma submissão controlada e confirmada diretamente na aba **Respostas** do Google Forms ou na planilha vinculada.
