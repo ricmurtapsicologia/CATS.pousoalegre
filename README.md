@@ -26,25 +26,29 @@ Observação: WhatsApp, Facebook e outros serviços podem manter cache do previe
 
 ## Arquitetura
 
-- `index.html`: camada principal, responsável pela identidade visual, metadados sociais, configuração da integração, validações de mapeamento e adaptação da interface.
-- `legacy.html`: preserva a implementação funcional e o conteúdo original do formulário multipasso.
+- `index.html`: camada de apresentação e adaptação visual da interface.
+- `legacy.html`: preserva a implementação funcional do formulário multipasso e sua configuração de envio.
 - Google Forms: recebe os dados por `POST` no endpoint `formResponse`, através de iframe de resposta oculto.
 
-A separação entre a camada adaptadora e o formulário funcional reduz o risco de regressão na integração enquanto permite evoluir design e identidade visual sem reescrever toda a lógica do formulário.
+A separação entre a camada visual e o formulário funcional permite evoluir identidade, responsividade e metadados sociais sem reescrever a lógica principal do formulário.
 
 Não foram adicionados frameworks de interface ou bibliotecas JavaScript externas. Para uma página estática hospedada no GitHub Pages, HTML, CSS e JavaScript nativos reduzem dependências, peso, superfície de falha e custo de manutenção.
 
-Não há arquitetura de prompt ou modelo generativo em execução nesta página; portanto, adicionar bibliotecas de engenharia de prompt não traria benefício técnico ao projeto.
-
 ## Integração com Google Forms
 
-O formulário envia diretamente para:
+A configuração de integração foi restaurada ao comportamento anterior que já existia no projeto, preservando o formulário funcional original em `legacy.html`.
+
+O `index.html` não reescreve mais globalmente os identificadores dos campos nem força uma nova configuração do `action`, `method`, `target` e `enctype`. Ele volta a realizar apenas as adaptações específicas que já eram usadas anteriormente:
+
+- conversão de Posto/Graduação e Tempo de Serviço para listas, preservando os `name` originais;
+- mapeamento de experiência prévia para `entry.500885681`;
+- mapeamento de exposição a suicídio consumado para `entry.212330805`;
+- mapeamento do campo temporário de irritabilidade para `entry.327261555`;
+- inclusão de `fvv=1`, `pageHistory=0,1,2,3` e `submit=Submit`.
+
+O formulário funcional continua enviando para:
 
 `https://docs.google.com/forms/d/e/1FAIpQLScVj6HESm2cWDN3sNQCaoNOtWSKini7NbSHgiTXemwlyvqAXg/formResponse`
-
-A camada principal mantém o mapeamento explícito dos campos para os respectivos identificadores `entry.*`, incluindo os campos que necessitam de correção dinâmica. Também acrescenta os parâmetros de navegação usados pelo Forms (`fvv`, `pageHistory` e `submit`).
-
-Antes de liberar o envio, a página verifica se existem campos obrigatórios sem `name`, campos temporários ainda não mapeados ou divergências nos identificadores principais. Isso evita falhas silenciosas de integração.
 
 ## Privacidade e armazenamento
 
@@ -73,8 +77,8 @@ URL pública:
 
 `https://ricmurtapsicologia.github.io/CATS.pousoalegre/`
 
-O nome do repositório não foi alterado para preservar a URL pública já distribuída. A identidade exibida ao usuário, no navegador e no compartilhamento social foi aprimorada sem quebrar links existentes.
+O nome do repositório não foi alterado para preservar a URL pública já distribuída.
 
 ## Validação operacional
 
-Como o envio ocorre entre origens diferentes, o navegador não permite que a página leia o conteúdo da resposta retornada pelo Google. Antes da divulgação definitiva, deve ser feita uma submissão controlada e confirmada diretamente na aba **Respostas** do Google Forms ou na planilha vinculada.
+O arquivo `legacy.html` atual possui o mesmo SHA da versão anterior usada como referência para a restauração da integração. Como o envio ocorre entre origens diferentes, o navegador não consegue confirmar pelo conteúdo da resposta se o Google Forms registrou efetivamente os dados. A homologação final deve ser feita com uma submissão controlada e conferência direta na aba **Respostas** do Google Forms ou na planilha vinculada.
