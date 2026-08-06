@@ -1,20 +1,24 @@
-# CATS 2026 — Inscrição | Pouso Alegre
+# VIII CATS 2026 — Boas-vindas | Pouso Alegre
 
-Página responsiva para inscrição e levantamento prévio do CATS 2026, com interface própria e envio ao Google Forms sem exibir a interface do Google ao participante.
+Página responsiva de boas-vindas e levantamento prévio do VIII CATS 2026, com interface própria e envio ao Google Forms sem exibir a interface do Google ao participante.
 
 ## Identidade e apresentação
 
-- Título público: `CATS 2026 | Inscrição — Pouso Alegre`.
+- Título público: `VIII CATS 2026 | Boas-vindas — Pouso Alegre`.
+- Abertura destinada aos alunos já vinculados à VIII Edição, sem linguagem de inscrição.
+- Mensagem inicial receptiva e objetiva, solicitando o preenchimento obrigatório do formulário de levantamento prévio.
+- Assinatura institucional da abertura: `Lucas Oliveira, Capitão BM — Coordenador do VIII CATS`.
 - Identidade visual alinhada ao ambiente do Curso ATS/CBMMG: azul institucional, fundo escuro no hero e amarelo de destaque.
 - Hero responsivo com imagem em `background-size: cover`, evitando deformação da fotografia em celular ou desktop.
-- Informações técnicas de implementação foram retiradas da comunicação principal e substituídas por identificação institucional e contexto do formulário.
+- Identificação visual da edição por `VIII Edição`, `Pouso Alegre` e `CBMMG`.
+- Informações técnicas de implementação permanecem fora da comunicação principal.
 - Rodapé institucional: `© 2026 CBMMG — Equipe de Coordenação do CATS. Todos os direitos reservados.`
 
 O símbolo `©` foi utilizado por ser o sinal adequado para indicação de direitos autorais. O símbolo `®` é reservado à indicação de marca registrada.
 
 ## Compartilhamento em WhatsApp e redes sociais
 
-O `index.html` possui metadados Open Graph e Twitter Card próprios para compartilhamento do link.
+O `index.html` possui metadados Open Graph e Twitter Card próprios para compartilhamento do link, atualizados para caracterizar a página como boas-vindas e levantamento prévio do VIII CATS, e não como página de inscrição.
 
 A imagem social utilizada é a mesma fotografia operacional selecionada na página do Curso ATS:
 
@@ -38,7 +42,7 @@ Não foram adicionados frameworks de interface ou bibliotecas JavaScript externa
 
 A configuração de integração foi restaurada ao comportamento anterior que já existia no projeto, preservando o formulário funcional original em `legacy.html`.
 
-O `index.html` não reescreve mais globalmente os identificadores dos campos nem força uma nova configuração do `action`, `method`, `target` e `enctype`. Ele volta a realizar apenas as adaptações específicas que já eram usadas anteriormente:
+O `index.html` não reescreve globalmente os identificadores dos campos nem força uma nova configuração do `action`, `method`, `target` e `enctype`. Ele realiza apenas as adaptações específicas já utilizadas no projeto:
 
 - conversão de Posto/Graduação e Tempo de Serviço para listas, preservando os `name` originais;
 - mapeamento de experiência prévia para `entry.500885681`;
@@ -67,7 +71,8 @@ A interface segue abordagem mobile-first:
 - foco visível para navegação por teclado;
 - suporte a `prefers-reduced-motion`;
 - `viewport-fit=cover` e respeito à safe area no rodapé;
-- contraste reforçado nos elementos principais.
+- contraste reforçado nos elementos principais;
+- hero ampliado de forma responsiva para acomodar a mensagem de boas-vindas e a assinatura sem sobreposição.
 
 ## Publicação
 
@@ -81,4 +86,6 @@ O nome do repositório não foi alterado para preservar a URL pública já distr
 
 ## Validação operacional
 
-O arquivo `legacy.html` atual possui o mesmo SHA da versão anterior usada como referência para a restauração da integração. Como o envio ocorre entre origens diferentes, o navegador não consegue confirmar pelo conteúdo da resposta se o Google Forms registrou efetivamente os dados. A homologação final deve ser feita com uma submissão controlada e conferência direta na aba **Respostas** do Google Forms ou na planilha vinculada.
+O arquivo `legacy.html` permanece responsável pela integração funcional com o Google Forms. A alteração da abertura foi feita no `index.html`, preservando os mapeamentos e o envio já existentes.
+
+Como o envio ocorre entre origens diferentes, o navegador não consegue confirmar pelo conteúdo da resposta se o Google Forms registrou efetivamente os dados. A homologação final deve ser feita com uma submissão controlada e conferência direta na aba **Respostas** do Google Forms ou na planilha vinculada.
