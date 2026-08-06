@@ -113,7 +113,7 @@
       html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       body{overflow-x:hidden;background:linear-gradient(180deg,#ece8df 0,#f7f5f0 360px,#f4f1ea 100%)}
       .hero{padding:14px 0 18px}
-      .hero-card{position:relative;min-height:270px;display:flex!important;flex-direction:column;justify-content:space-between;padding:22px!important;overflow:hidden!important;border:1px solid rgba(255,255,255,.11)!important;border-radius:24px!important;background:linear-gradient(105deg,rgba(0,0,0,.88),rgba(0,0,0,.58) 54%,rgba(0,0,0,.88)),var(--cats-hero) 62% center/cover no-repeat!important;box-shadow:0 24px 60px rgba(3,8,16,.28)!important;color:#fff!important}
+      .hero-card{position:relative;min-height:300px;display:flex!important;flex-direction:column;justify-content:space-between;padding:22px!important;overflow:hidden!important;border:1px solid rgba(255,255,255,.11)!important;border-radius:24px!important;background:linear-gradient(105deg,rgba(0,0,0,.88),rgba(0,0,0,.58) 54%,rgba(0,0,0,.88)),var(--cats-hero) 62% center/cover no-repeat!important;box-shadow:0 24px 60px rgba(3,8,16,.28)!important;color:#fff!important}
       .hero-card:after{display:none!important}
       .course-brand{display:flex;align-items:center;gap:8px;color:rgba(255,255,255,.92);font-size:11px;font-weight:850;letter-spacing:.085em;text-transform:uppercase}
       .course-star{color:var(--cats-gold);font-size:16px;line-height:1}
@@ -148,7 +148,7 @@
     doc.head.append(style);
 
     const header=doc.querySelector('header.hero');
-    if(header) header.innerHTML=`<div class="shell"><div class="hero-card"><div class="course-brand"><span class="course-star" aria-hidden="true">★</span><span>CBMMG • Pouso Alegre</span></div><div class="hero-copy"><span class="hero-kicker">VIII CATS 2026 • Boas-vindas</span><h1>Curso de Atendimento a Tentativas de <span>Suicídio</span></h1><p>Seja bem-vindo(a). Sua participação começa aqui. Reserve alguns minutos para preencher o formulário a seguir: suas respostas nos ajudam a compreender o perfil da turma e a tornar a experiência de aprendizagem mais direcionada e relevante. <strong>O preenchimento é obrigatório.</strong></p><div class="hero-signature"><span>Cordialmente,</span><strong>Lucas Oliveira, Capitão BM</strong><span>Coordenador do VIII CATS</span></div></div></div></div>`;
+    if(header) header.innerHTML=`<div class="shell"><div class="hero-card"><div class="course-brand"><span class="course-star" aria-hidden="true">★</span><span>CBMMG • Pouso Alegre</span></div><div class="hero-copy"><span class="hero-kicker">CATS 2026 • Boas-vindas</span><h1>Curso de Atendimento a Tentativas de <span>Suicídio</span></h1><p>Seja bem-vindo(a). Sua participação começa aqui. Reserve alguns minutos para preencher o formulário a seguir: suas respostas nos ajudam a compreender o perfil da turma e a tornar a experiência de aprendizagem mais direcionada e relevante. <strong>O preenchimento é obrigatório.</strong></p><div class="hero-signature"><span>Cordialmente,</span><strong>Lucas Oliveira, Capitão BM</strong><span>Coordenador do VIII CATS</span></div></div></div></div>`;
   }
 
   function installFooter(doc){
