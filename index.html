@@ -7,7 +7,7 @@
   <meta name="robots" content="noindex,noarchive">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="description" content="Boas-vindas e levantamento prévio do VIII CATS 2026 em Pouso Alegre — CBMMG.">
-  <meta name="cats-build" content="2026.08.06-r3">
+  <meta name="cats-build" content="2026.08.07-r4">
   <title>VIII CATS 2026 | Boas-vindas — Pouso Alegre</title>
   <link rel="canonical" href="https://ricmurtapsicologia.github.io/CATS.pousoalegre/">
   <meta property="og:locale" content="pt_BR">
@@ -25,65 +25,85 @@
     :root{color-scheme:light;--bg:#f4f1ea;--ink:#17212b;--muted:#66717c}
     *{box-sizing:border-box}
     html,body{margin:0;min-height:100%;background:var(--bg)}
-    body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink)}
-    #boot{min-height:100dvh;display:grid;place-items:center;padding:24px;text-align:center;font:650 14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--muted);background:var(--bg)}
+    body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);overflow-x:hidden}
+    #boot{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:24px;text-align:center;font:650 14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--muted);background:var(--bg)}
+    #boot[hidden]{display:none}
+    #app{display:block;width:100%;height:100dvh;border:0;background:var(--bg);opacity:0;transition:opacity .16s ease}
+    #app.ready{opacity:1}
+    @media(prefers-reduced-motion:reduce){#app{transition:none}}
   </style>
 </head>
 <body>
   <div id="boot" role="status" aria-live="polite">Carregando formulário…</div>
+  <iframe id="app" src="legacy.html?v=2026.08.07-r4" title="VIII CATS 2026 — formulário em Pouso Alegre" scrolling="no" referrerpolicy="same-origin"></iframe>
+
 <script>
-(async()=>{
+(()=>{
   'use strict';
-  const BUILD='2026.08.06-r3';
+
+  const BUILD='2026.08.07-r4';
+  const FORM_ACTION='https://docs.google.com/forms/d/e/1FAIpQLScVj6HESm2cWDN3sNQCaoNOtWSKini7NbSHgiTXemwlyvqAXg/formResponse';
   const HERO='https://i.pinimg.com/736x/29/42/2a/29422ad8bed8166ef119bcef4792218f.jpg';
   const POSTOS=['Cel','Ten Cel','Maj','Cap','1º Ten','2º Ten','Asp-a-Of.','Cad','Subten','1º Sgt','2º Sgt','3º Sgt','Cb','Sd'];
   const TEMPO=['até 5 anos.','de 5 a 10 anos.','De 10 a 15 anos.','De 15 a 20 anos.','de 20 a 25 anos.','Mais de 25 anos de serviço.'];
   const OCORRENCIAS=['Nunca participei.','Sim, de 01 a 05 ocorrências','Sim, de 06 a 10 ocorrências','Sim, em mais de 11 ocorrências'];
   const PRESENCIOU=['Nunca presenciei.','Sim, de 01 a 05 suicídios completos.','Sim, de 06 a 10 suicídios completos.','Sim, em mais de 11 suicídios completos.'];
 
+  const frame=document.getElementById('app');
   const boot=document.getElementById('boot');
 
-  function setSelect(doc,id,values,name){
-    const old=doc.getElementById(id);
-    if(!old)return;
+  function makeSelect(doc,old,values,name){
     const select=doc.createElement('select');
-    select.id=id;
-    select.name=name||old.getAttribute('name')||'';
+    select.id=old.id;
+    select.name=name||old.name||'';
     select.required=old.required;
-    select.setAttribute('aria-label',old.getAttribute('aria-label')||id);
+    select.setAttribute('aria-label',old.getAttribute('aria-label')||old.id||'Seleção');
     const first=doc.createElement('option');
-    first.value=''; first.textContent='Escolher'; select.append(first);
-    values.forEach(v=>{const o=doc.createElement('option');o.value=v;o.textContent=v;select.append(o)});
+    first.value='';
+    first.textContent='Escolher';
+    select.append(first);
+    values.forEach(v=>{
+      const option=doc.createElement('option');
+      option.value=v;
+      option.textContent=v;
+      select.append(option);
+    });
     old.replaceWith(select);
+    return select;
+  }
+
+  function setOptions(select,values,name){
+    if(name)select.name=name;
+    select.replaceChildren();
+    const first=select.ownerDocument.createElement('option');
+    first.value='';
+    first.textContent='Escolher';
+    select.append(first);
+    values.forEach(v=>{
+      const option=select.ownerDocument.createElement('option');
+      option.value=v;
+      option.textContent=v;
+      select.append(option);
+    });
   }
 
   function hidden(doc,form,name,value){
     let el=form.querySelector(`input[name="${name}"]`);
-    if(!el){el=doc.createElement('input');el.type='hidden';el.name=name;form.append(el)}
+    if(!el){
+      el=doc.createElement('input');
+      el.type='hidden';
+      el.name=name;
+      form.append(el);
+    }
     el.value=value;
   }
 
-  try{
-    const response=await fetch(`legacy.html?v=${encodeURIComponent(BUILD)}`,{cache:'no-store'});
-    if(!response.ok)throw new Error(`HTTP ${response.status}`);
-    const html=await response.text();
-    const doc=new DOMParser().parseFromString(html,'text/html');
-    const form=doc.getElementById('catsForm');
-    if(!form)throw new Error('Formulário não encontrado');
-
-    doc.title='VIII CATS 2026 | Boas-vindas — Pouso Alegre';
-    doc.documentElement.dataset.catsBuild=BUILD;
-
-    const oldMeta=doc.querySelector('meta[name="description"]');
-    if(oldMeta)oldMeta.content='Boas-vindas e levantamento prévio do VIII CATS 2026 em Pouso Alegre — CBMMG.';
-    const buildMeta=doc.createElement('meta');
-    buildMeta.name='cats-build'; buildMeta.content=BUILD; doc.head.append(buildMeta);
-
+  function installVisual(doc){
     const style=doc.createElement('style');
     style.textContent=`
       :root{--cats-navy:#07101f;--cats-blue:#003366;--cats-gold:#ffdd00;--cats-hero:url("${HERO}")}
-      html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
-      body{overflow-x:hidden;background:linear-gradient(180deg,#ece8df 0,#f7f5f0 390px,#f4f1ea 100%)}
+      html{-webkit-text-size-adjust:100%;text-size-adjust:100%;overflow:hidden}
+      body{overflow:hidden;background:linear-gradient(180deg,#ece8df 0,#f7f5f0 390px,#f4f1ea 100%)}
       .hero{padding:14px 0 20px}
       .hero-card{position:relative!important;display:block!important;height:auto!important;min-height:0!important;padding:clamp(20px,5vw,34px)!important;overflow:hidden!important;border:1px solid rgba(255,255,255,.12)!important;border-radius:24px!important;background:linear-gradient(108deg,rgba(0,0,0,.90),rgba(0,0,0,.62) 55%,rgba(0,0,0,.86)),var(--cats-hero) 64% center/cover no-repeat!important;box-shadow:0 24px 60px rgba(3,8,16,.28)!important;color:#fff!important}
       .hero-card:after{display:none!important}
@@ -129,33 +149,103 @@
       header.innerHTML=`<div class="shell"><div class="hero-card"><div class="course-brand"><span class="course-star" aria-hidden="true">★</span><span>CBMMG • 7ª Cia Ind - Pouso Alegre</span></div><div class="hero-copy"><span class="hero-kicker">Boas-vindas • VIII Edição</span><h1>Curso de Atendimento a Tentativas de <span>Suicídio</span></h1><div class="hero-message"><p class="hero-welcome">Caros abordadores e abordadoras, sejam bem-vindos.</p><p>Antes de começarmos, reserve alguns minutos para preencher o formulário a seguir. Suas respostas nos ajudam a conhecer melhor a turma e a preparar uma experiência de aprendizagem mais direcionada e relevante.</p><p class="hero-required"><strong>Preenchimento obrigatório</strong></p></div><div class="hero-signature"><span>Cordialmente,</span><strong>Lucas Antônio de Oliveira, Capitão BM</strong><span class="role">Coordenador do CATS</span></div></div></div></div>`;
     }
 
-    setSelect(doc,'posto',POSTOS,'entry.55438016');
-    setSelect(doc,'tempo',TEMPO,'entry.1097052870');
-    setSelect(doc,'ocorrencia',OCORRENCIAS,'entry.500885681');
-    setSelect(doc,'presenciou',PRESENCIOU,'entry.212330805');
-
-    hidden(doc,form,'fvv','1');
-    hidden(doc,form,'pageHistory','0,1,2,3');
-    hidden(doc,form,'submit','Submit');
-
-    const submit=doc.getElementById('submitBtn');
-    if(submit)submit.textContent='Enviar formulário';
-    const success=doc.getElementById('success');
-    if(success){const h=success.querySelector('h2');const p=success.querySelector('p');if(h)h.textContent='Envio concluído';if(p)p.textContent='As respostas foram encaminhadas ao formulário oficial.'}
     const footer=doc.querySelector('footer.footer');
-    if(footer){footer.className='shell footer cats-footer';footer.innerHTML=`<div class="cats-footer-panel"><div class="cats-footer-brand"><span aria-hidden="true">★</span><span>CBMMG • CATS 2026</span></div><p class="cats-footer-copy"><strong>© 2026 CBMMG — Equipe de Coordenação do CATS.</strong><br>Todos os direitos reservados.</p></div>`}
-
-    const runtime=doc.createElement('script');
-    runtime.textContent=`document.documentElement.dataset.catsBuild='${BUILD}';document.querySelectorAll('input[name="temp_clinical_16"]').forEach(el=>el.name='entry.327261555');document.querySelectorAll('#posto,#tempo,#ocorrencia,#presenciou').forEach(el=>el.addEventListener('change',()=>{el.classList.remove('invalid');const e=el.closest('.field')?.querySelector('.error');if(e)e.textContent=''}));`;
-    doc.body.append(runtime);
-
-    document.open();
-    document.write('<!doctype html>'+doc.documentElement.outerHTML);
-    document.close();
-  }catch(error){
-    console.error('[CATS]',error);
-    boot.textContent='Não foi possível carregar o formulário. Atualize a página.';
+    if(footer){
+      footer.className='shell footer cats-footer';
+      footer.innerHTML=`<div class="cats-footer-panel"><div class="cats-footer-brand"><span aria-hidden="true">★</span><span>CBMMG • CATS 2026</span></div><p class="cats-footer-copy"><strong>© 2026 CBMMG — Equipe de Coordenação do CATS.</strong><br>Todos os direitos reservados.</p></div>`;
+    }
   }
+
+  function syncHeight(doc){
+    const height=Math.max(doc.documentElement.scrollHeight,doc.body?.scrollHeight||0);
+    if(height>0)frame.style.height=`${height}px`;
+  }
+
+  function scrollToProgress(doc){
+    const progress=doc.querySelector('.progress-wrap');
+    const y=frame.offsetTop+(progress?.offsetTop||0);
+    window.scrollTo({top:y,behavior:'smooth'});
+  }
+
+  frame.addEventListener('load',()=>{
+    try{
+      const doc=frame.contentDocument;
+      const form=doc?.getElementById('catsForm');
+      if(!doc||!form)throw new Error('Estrutura do formulário não encontrada');
+
+      doc.documentElement.dataset.catsBuild=BUILD;
+      doc.title='VIII CATS 2026 | Boas-vindas — Pouso Alegre';
+      installVisual(doc);
+
+      const posto=doc.getElementById('posto');
+      if(posto&&posto.tagName!=='SELECT')makeSelect(doc,posto,POSTOS,'entry.55438016');
+
+      const tempo=doc.getElementById('tempo');
+      if(tempo&&tempo.tagName!=='SELECT')makeSelect(doc,tempo,TEMPO,'entry.1097052870');
+
+      const ocorrencia=doc.getElementById('ocorrencia');
+      if(ocorrencia)setOptions(ocorrencia,OCORRENCIAS,'entry.500885681');
+
+      const presenciou=doc.getElementById('presenciou');
+      if(presenciou)setOptions(presenciou,PRESENCIOU,'entry.212330805');
+
+      doc.querySelectorAll('input[name="temp_clinical_16"]').forEach(el=>el.name='entry.327261555');
+
+      hidden(doc,form,'fvv','1');
+      hidden(doc,form,'pageHistory','0,1,2,3');
+      hidden(doc,form,'submit','Submit');
+
+      form.action=FORM_ACTION;
+      form.method='POST';
+      form.target='google-response';
+      form.enctype='application/x-www-form-urlencoded';
+      form.dataset.formsLinked='true';
+
+      const missing=[...form.querySelectorAll('[required]')].filter(el=>!el.name);
+      const temporary=[...form.elements].filter(el=>typeof el.name==='string'&&el.name.startsWith('temp_'));
+      if(missing.length||temporary.length)throw new Error('Mapeamento do Google Forms incompleto');
+
+      const submit=doc.getElementById('submitBtn');
+      if(submit)submit.textContent='Enviar formulário';
+      const success=doc.getElementById('success');
+      if(success){
+        const h=success.querySelector('h2');
+        const p=success.querySelector('p');
+        if(h)h.textContent='Envio concluído';
+        if(p)p.textContent='As respostas foram encaminhadas ao formulário oficial.';
+      }
+
+      ['posto','tempo','ocorrencia','presenciou'].forEach(id=>{
+        const el=doc.getElementById(id);
+        if(el)el.addEventListener('change',()=>{
+          el.classList.remove('invalid');
+          const error=el.closest('.field')?.querySelector('.error');
+          if(error)error.textContent='';
+        });
+      });
+
+      doc.querySelectorAll('[data-next],[data-prev]').forEach(btn=>btn.addEventListener('click',()=>{
+        setTimeout(()=>{syncHeight(doc);scrollToProgress(doc)},30);
+      }));
+
+      if(success){
+        new MutationObserver(()=>{
+          syncHeight(doc);
+          if(success.classList.contains('show'))window.scrollTo({top:frame.offsetTop,behavior:'smooth'});
+        }).observe(success,{attributes:true,attributeFilter:['class']});
+      }
+
+      if('ResizeObserver'in window)new ResizeObserver(()=>syncHeight(doc)).observe(doc.body);
+      window.addEventListener('resize',()=>syncHeight(doc),{passive:true});
+      syncHeight(doc);
+
+      boot.hidden=true;
+      frame.classList.add('ready');
+    }catch(error){
+      console.error('[CATS]',error);
+      boot.textContent='Não foi possível preparar o formulário. Atualize a página.';
+    }
+  });
 })();
 </script>
 </body>
