@@ -90,10 +90,8 @@ def main() -> None:
     auth_head = '''\n  <link data-cats-auth rel="stylesheet" href="https://ricmurtapsicologia.github.io/Curso-ATS/auth.css?v=20260905-2" />\n  <link rel="stylesheet" href="cats-auth.css?v=20260905-1" />\n  <script defer src="cats-auth.js?v=20260905-1"></script>\n  <script defer src="https://ricmurtapsicologia.github.io/Curso-ATS/auth.js?v=20260905-2"></script>\n'''
     page = page.replace('</head>', auth_head + '</head>', 1)
 
-    # Remove chat externo antigo: reduz superfície de terceiros e ruído visual.
     page = re.sub(r'\n\s*<!-- Tawk\.to -->\s*<script[^>]*>.*?</script>\s*', '\n', page, flags=re.S)
 
-    # Metadados e informações do VIII CATS 2026.
     page = page.replace(
         '<div class="hero-kpi"><small>Extras</small><strong>Prevenção + Projeto</strong></div>',
         '<div class="hero-kpi"><small>Período</small><strong>21–25/09/2026</strong></div>'
@@ -109,7 +107,6 @@ def main() -> None:
     page = page.replace('<body>', '<body>\n  <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>', 1)
     page = page.replace('role="menubar"', '', 1).replace('role="menuitem"', '').replace('role="menuitem"', '')
 
-    # Navegação institucional sem tocar nos oito módulos.
     page = page.replace(
         '<a  href="#materiais">Materiais</a>' if '<a  href="#materiais">Materiais</a>' in page else '<a href="#materiais">Materiais</a>',
         '<a href="#materiais">Materiais</a>\n        <a href="precurso.html">Pré-curso</a>\n        <a href="#recursos">Biblioteca</a>',
@@ -126,7 +123,6 @@ def main() -> None:
             raise RuntimeError('Fechamento da grade de aulas não localizado')
         page = page.replace(marker, library_card + '      </div>\n\n      <!-- Materiais -->', 1)
 
-    # O podcast já existia na página de Juiz de Fora e é preservado sem alteração de conteúdo.
     if 'https://ricmurtapsicologia.github.io/Podcast-ATS-CBMMG/' not in page:
         raise RuntimeError('Podcast canônico ausente após migração')
 
@@ -136,13 +132,15 @@ def main() -> None:
         1,
     )
 
-    # Campo de avaliação permanece fechado: não há URL oficial de prova final registrada.
     audit_gate = '''\n      <section class="container" id="avaliacao" aria-labelledby="avaliacaoTitle">\n        <details class="materials">\n          <summary id="avaliacaoTitle"><i class="ri-shield-check-line"></i> Avaliação do curso</summary>\n          <p class="resource-note" style="margin-top:12px">A avaliação será disponibilizada neste ambiente após vinculação da URL oficial.</p>\n        </details>\n      </section>\n'''
     page = page.replace('</main>', audit_gate + '\n  </main>', 1)
 
-    # Bloqueio de regressão: a migração não pode publicar metadados da edição anterior.
-    forbidden = ("CATS VII", "CATS) VII", "Juiz de Fora", "4º BBM")
-    remnants = [term for term in forbidden if term in page]
+    remnants: list[str] = []
+    if re.search(r'CATS\)? VII(?!I)', page):
+        remnants.append('CATS VII')
+    for term in ("Juiz de Fora", "4º BBM"):
+        if term in page:
+            remnants.append(term)
     if remnants:
         raise RuntimeError("Resquícios da edição anterior: " + ", ".join(remnants))
 
