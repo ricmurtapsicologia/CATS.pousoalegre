@@ -66,12 +66,15 @@ def main() -> None:
         ("CATS VII • 4º BBM - Juiz de Fora", "VIII CATS • Pouso Alegre"),
         ("CATS VII no 4º BBM Juiz de Fora", "VIII CATS em Pouso Alegre"),
         ("CATS VII", "VIII CATS"),
+        ("CATS) VII", "CATS) VIII"),
         ("CATS 2025", "CATS 2026"),
         ("4º BBM/JF", "7ª Cia Ind • Pouso Alegre"),
         ("4º BBM (Juiz de Fora)", "7ª Cia Ind • Pouso Alegre"),
         ("4º BBM Juiz de Fora", "7ª Cia Ind - Pouso Alegre"),
         ("4º BBM - Juiz de Fora", "7ª Cia Ind - Pouso Alegre"),
+        ("4º BBM", "7ª Cia Ind"),
         ("Juiz de Fora", "Pouso Alegre"),
+        ("no 7ª Cia Ind - Pouso Alegre", "na 7ª Cia Ind, em Pouso Alegre"),
         ("https://ricmurtapsicologia.github.io/cats-2025-4bbm-jf/", "https://ricmurtapsicologia.github.io/CATS.pousoalegre/"),
         ("© 2025 Corpo de Bombeiros Militar de Minas Gerais", "© 2026 Corpo de Bombeiros Militar de Minas Gerais"),
         ("ats_progress_v6", "cats_pa_progress_v1"),
@@ -82,7 +85,7 @@ def main() -> None:
         page = page.replace(old, new)
 
     page = page.replace('<html lang="pt-BR">', '<html lang="pt-BR" class="cats-auth-pending">', 1)
-    page = page.replace('<meta charset="UTF-8" />', '<meta charset="UTF-8" />\n  <meta name="robots" content="noindex,nofollow,noarchive" />\n  <meta name="theme-color" content="#07101f" />\n  <meta name="cats-release" content="viii-cats-pa-2026-r1" />', 1)
+    page = page.replace('<meta charset="UTF-8" />', '<meta charset="UTF-8" />\n  <meta name="robots" content="noindex,nofollow,noarchive" />\n  <meta name="theme-color" content="#07101f" />\n  <meta name="cats-release" content="viii-cats-pa-2026-r2" />', 1)
 
     auth_head = '''\n  <link data-cats-auth rel="stylesheet" href="https://ricmurtapsicologia.github.io/Curso-ATS/auth.css?v=20260905-2" />\n  <link rel="stylesheet" href="cats-auth.css?v=20260905-1" />\n  <script defer src="cats-auth.js?v=20260905-1"></script>\n  <script defer src="https://ricmurtapsicologia.github.io/Curso-ATS/auth.js?v=20260905-2"></script>\n'''
     page = page.replace('</head>', auth_head + '</head>', 1)
@@ -134,12 +137,35 @@ def main() -> None:
     )
 
     # Campo de avaliação permanece fechado: não há URL oficial de prova final registrada.
-    audit_gate = '''\n      <section class="container" id="avaliacao" aria-labelledby="avaliacaoTitle">\n        <details class="materials">\n          <summary id="avaliacaoTitle"><i class="ri-shield-check-line"></i> Avaliação do curso</summary>\n          <p class="resource-note" style="margin-top:12px">A avaliação será disponibilizada neste ambiente somente após validação técnica e editorial e vinculação da URL oficial.</p>\n        </details>\n      </section>\n'''
+    audit_gate = '''\n      <section class="container" id="avaliacao" aria-labelledby="avaliacaoTitle">\n        <details class="materials">\n          <summary id="avaliacaoTitle"><i class="ri-shield-check-line"></i> Avaliação do curso</summary>\n          <p class="resource-note" style="margin-top:12px">A avaliação será disponibilizada neste ambiente após vinculação da URL oficial.</p>\n        </details>\n      </section>\n'''
     page = page.replace('</main>', audit_gate + '\n  </main>', 1)
+
+    # Bloqueio de regressão: a migração não pode publicar metadados da edição anterior.
+    forbidden = ("CATS VII", "CATS) VII", "Juiz de Fora", "4º BBM")
+    remnants = [term for term in forbidden if term in page]
+    if remnants:
+        raise RuntimeError("Resquícios da edição anterior: " + ", ".join(remnants))
 
     current_index.write_text(page, encoding="utf-8")
 
-    readme = f'''# VIII CATS 2026 — Pouso Alegre\n\nPortal de apoio às aulas presenciais do VIII Curso de Atendimento a Tentativas de Suicídio do CBMMG, em Pouso Alegre.\n\n- Edição: VIII CATS 2026\n- Período: 21–25/09/2026\n- Carga horária: 46 h/a\n- Coordenação: Capitão BM Lucas Antônio de Oliveira\n- Unidade: 7ª Cia Ind — Pouso Alegre\n- Aulas: preservadas da plataforma CATS anterior, sem alteração dos oito módulos\n- Recursos: Biblioteca ATS CBMMG + podcast Girando a Ampulheta da Vida\n- Pré-curso: `precurso.html`, com o formulário histórico/BDI-II preservado\n- Autenticação: mesma base canônica de credenciais do Curso ATS e do podcast; sessão CATS isolada\n- Avaliação final: não publicada até existir URL oficial e aprovação dos gates 30/30 e 90/90\n\nURL pública: https://ricmurtapsicologia.github.io/CATS.pousoalegre/\n'''
+    readme = '''# VIII CATS 2026 — Pouso Alegre
+
+Portal de apoio às aulas presenciais do VIII Curso de Atendimento a Tentativas de Suicídio do CBMMG, em Pouso Alegre.
+
+- Edição: VIII CATS 2026
+- Período: 21–25/09/2026
+- Carga horária: 46 h/a
+- Coordenação: Capitão BM Lucas Antônio de Oliveira
+- Unidade: 7ª Cia Ind — Pouso Alegre
+- Aulas: preservadas da plataforma CATS anterior, sem alteração dos oito módulos
+- Recursos: Biblioteca ATS CBMMG + podcast Girando a Ampulheta da Vida
+- Pré-curso: `precurso.html`, com o formulário histórico/BDI-II preservado
+- Autenticação: mesma base canônica de credenciais do Curso ATS e do podcast; sessão CATS isolada
+- Auditorias: 30/30 e 90/90 obrigatórias antes da publicação
+- Avaliação final: campo preparado; URL oficial ainda não localizada nas fontes conectadas
+
+URL pública: https://ricmurtapsicologia.github.io/CATS.pousoalegre/
+'''
     (ROOT / 'README.md').write_text(readme, encoding='utf-8')
 
 
