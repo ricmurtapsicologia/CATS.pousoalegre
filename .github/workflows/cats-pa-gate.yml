@@ -1,0 +1,65 @@
+name: VIII CATS Pouso Alegre — Build e Auditorias
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/cats-pa-gate.yml'
+      - 'scripts/build_portal.py'
+      - 'scripts/qa_30_30.py'
+      - 'scripts/qa_90_90.py'
+      - 'scripts/e2e_portal.py'
+      - 'cats-auth.js'
+      - 'cats-auth.css'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Construir portal preservando a página de pré-curso
+        run: python scripts/build_portal.py
+
+      - name: Auditoria 30/30 — técnica e institucional
+        run: python scripts/qa_30_30.py
+
+      - name: Auditoria 90/90 — editorial e experiência
+        run: python scripts/qa_90_90.py
+
+      - name: Instalar navegador de teste
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
+
+      - name: Servir versão auditada localmente
+        run: |
+          python -m http.server 8765 --bind 127.0.0.1 > /tmp/cats-pa-http.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8765/ >/dev/null && exit 0; sleep 0.5; done
+          cat /tmp/cats-pa-http.log
+          exit 1
+
+      - name: E2E — autenticação, aulas, recursos, pré-curso e mobile
+        run: python scripts/e2e_portal.py http://127.0.0.1:8765/
+
+      - name: Publicar somente após os dois gates e E2E aprovados
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html precurso.html legacy.html README.md
+          if git diff --cached --quiet; then
+            echo 'Nenhuma alteração de artefato.'
+          else
+            git commit -m 'Publica VIII CATS Pouso Alegre após auditorias 30/30 e 90/90'
+            git push origin HEAD:main
+          fi
