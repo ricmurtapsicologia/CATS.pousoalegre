@@ -11,6 +11,7 @@ Portal de apoio às aulas presenciais do VIII Curso de Atendimento a Tentativas 
 - Recursos: Biblioteca ATS CBMMG + podcast Girando a Ampulheta da Vida
 - Pré-curso: `precurso.html`, com o formulário histórico/BDI-II preservado
 - Autenticação: mesma base canônica de credenciais do Curso ATS e do podcast; sessão CATS isolada
-- Avaliação final: não publicada até existir URL oficial e aprovação dos gates 30/30 e 90/90
+- Auditorias: 30/30 e 90/90 obrigatórias antes da publicação
+- Avaliação final: campo preparado; URL oficial ainda não localizada nas fontes conectadas
 
 URL pública: https://ricmurtapsicologia.github.io/CATS.pousoalegre/
