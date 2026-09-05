@@ -55,6 +55,15 @@
     @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
   </style>
 </head>
+
+<script data-cats-legacy-guard="1">
+(()=>{
+  try{
+    const s=JSON.parse(sessionStorage.getItem('cats_pa_auth_v1')||'null');
+    if(!s||s.authenticated!==true||Date.now()>=Number(s.expiresAt||0)){location.replace('precurso.html');}
+  }catch{location.replace('precurso.html');}
+})();
+</script>
 <body>
   <header class="hero">
     <div class="shell">
