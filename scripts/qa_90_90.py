@@ -22,7 +22,7 @@ add("04 período", "21–25/09/2026" in page)
 add("05 carga horária", "46 h/a" in page)
 add("06 coordenador", "Capitão BM Lucas Antônio de Oliveira" in page)
 add("07 título institucional", "Curso de Atendimento a Tentativas de Suicídio" in page)
-add("08 sem edição antiga", "CATS VII" not in page and "CATS) VII" not in page)
+add("08 sem edição antiga", not re.search(r'CATS\)? VII(?!I)', page))
 add("09 sem local antigo", "Juiz de Fora" not in page and "4º BBM" not in page)
 add("10 ano de copyright", "© 2026" in page)
 
