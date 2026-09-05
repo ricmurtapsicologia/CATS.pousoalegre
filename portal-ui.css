@@ -1,5 +1,6 @@
 /* VIII CATS Pouso Alegre — camada mobile-first de experiência */
 :root{--ui-gap:12px;--ui-radius:16px;--ui-soft:rgba(255,255,255,.07);--ui-stroke:rgba(255,255,255,.13)}
+.sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
 
 /* Onboarding: leitura calma, afetiva e institucional */
 #onboard{padding:14px;background:rgba(2,8,23,.86)}
@@ -79,10 +80,10 @@
 .practice-card .content p{color:var(--text-2)}
 .practice-note{display:flex;align-items:flex-start;gap:8px;padding:9px 10px;border-radius:10px;background:rgba(255,209,102,.07);color:var(--text-2);font-size:.88rem;line-height:1.4}
 
-/* Recursos fora da malha curricular */
-.resources-grid .card{grid-column:1/-1;border-width:1px;box-shadow:none}
-.resources-grid .media{display:none}
-.resources-grid .content{padding:14px}
+/* Recursos opcionais também ficam visualmente leves no celular */
+.resource-card{grid-column:1/-1;border-width:1px;box-shadow:none}
+.resource-card .media{display:none}
+.resource-card .content{padding:14px}
 
 /* Cascatas: somente por botão explícito */
 .folder{margin-top:10px;border:1px solid var(--stroke);border-radius:14px;background:var(--glass);overflow:hidden}
@@ -111,7 +112,7 @@ footer{margin-top:6px}
   .nav-inner{display:flex;max-width:1200px;padding:12px 16px}.brand{font-size:1rem}.brand span{max-width:none}.brand small{display:inline}.nav-links{display:flex!important;grid-column:auto;padding:0}.nav-cta>a.btn[href="#aulas"]{display:inline-flex}#mobileMenuBtn{display:none}
   .hero-inner{max-width:1200px;display:grid;grid-template-columns:1.15fr .85fr;padding:54px 16px 42px}.hero h1{max-width:22ch;font-size:clamp(2.05rem,3.4vw,2.8rem)}.hero p{max-width:720px}.hero-card{display:block}.mobile-course-info{display:none}
   .coordination-band{padding:18px 16px 0}.coordination-card{padding:16px 18px}.coordination-card strong{font-size:1rem}
-  .container{padding:30px 16px}.grid{grid-template-columns:repeat(12,1fr);gap:16px}.course-card{grid-column:span 4;box-shadow:var(--shadow);border-width:1px}.course-card .media{display:block}.course-card .content{display:flex!important;padding:14px;border-top:0}.course-card .content h3{display:block}.lesson-toggle{display:none}.course-card .actions{display:flex;flex-wrap:wrap}.course-card .actions .btn,.course-card .actions a.btn{width:auto;min-height:0}.resources-grid .card{grid-column:span 6}.resources-grid .media{display:block}
+  .container{padding:30px 16px}.grid{grid-template-columns:repeat(12,1fr);gap:16px}.course-card{grid-column:span 4;box-shadow:var(--shadow);border-width:1px}.course-card .media{display:block}.course-card .content{display:flex!important;padding:14px;border-top:0}.course-card .content h3{display:block}.lesson-toggle{display:none}.course-card .actions{display:flex;flex-wrap:wrap}.course-card .actions .btn,.course-card .actions a.btn{width:auto;min-height:0}.resource-card{grid-column:span 6}.resource-card .media{display:block}
   #videos .video-grid{grid-template-columns:repeat(12,1fr)}#videos .video-grid .card{grid-column:span 4}
   .fab{display:inline-flex}.to-top{display:none}.to-top.is-visible{display:block}
   .footer-grid{grid-template-columns:repeat(3,1fr)}.footer-grid .cta .btn{width:auto}
