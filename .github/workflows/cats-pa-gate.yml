@@ -11,6 +11,8 @@ on:
       - 'scripts/e2e_portal.py'
       - 'cats-auth.js'
       - 'cats-auth.css'
+      - 'portal-ui.css'
+      - 'portal-ui.js'
   workflow_dispatch: {}
 
 permissions:
