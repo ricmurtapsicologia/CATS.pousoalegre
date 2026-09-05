@@ -110,19 +110,6 @@
     });
   }
 
-  function setupVideoFolder() {
-    const button = $("#videosToggle");
-    const panel = $("#videosGrid");
-    if (!button || !panel) return;
-    panel.hidden = true;
-    button.setAttribute("aria-expanded", "false");
-    button.addEventListener("click", () => {
-      const opening = panel.hidden;
-      panel.hidden = !opening;
-      button.setAttribute("aria-expanded", String(opening));
-    });
-  }
-
   function setupTopButton() {
     const button = $("#toTop");
     if (!button) return;
@@ -136,7 +123,6 @@
     setupCourseInfo();
     setupCourseCards();
     setupFolders();
-    setupVideoFolder();
     setupTopButton();
     installLogoutObserver();
   }
