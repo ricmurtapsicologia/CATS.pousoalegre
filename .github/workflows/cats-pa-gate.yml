@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/cats-pa-gate.yml'
       - 'scripts/build_portal.py'
+      - 'scripts/build_portal_entry.py'
       - 'scripts/qa_30_30.py'
       - 'scripts/qa_90_90.py'
       - 'scripts/e2e_portal.py'
@@ -31,7 +32,7 @@ jobs:
           python-version: '3.12'
 
       - name: Construir portal preservando a página de pré-curso
-        run: python scripts/build_portal.py
+        run: python scripts/build_portal_entry.py
 
       - name: Auditoria 30/30 — técnica e institucional
         run: python scripts/qa_30_30.py
