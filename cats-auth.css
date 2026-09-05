@@ -1,0 +1,8 @@
+html.cats-auth-pending body > :not(#catsAuthGate){visibility:hidden!important}
+#catsAuthGate:not([data-cats-pa-branded="true"]){visibility:hidden}
+html.cats-auth-failed body > *{display:none!important}
+html.cats-auth-failed body::before{content:"Não foi possível validar o acesso. Atualize a página e tente novamente.";display:grid;place-items:center;position:fixed;inset:0;padding:28px;background:#07101f;color:#fff;font:700 16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;text-align:center;z-index:2147483647}
+#catsAuthGate .cats-auth-course-title{max-width:38ch}
+#catsAuthGate .cats-auth-course-note{max-width:42ch}
+#catsAuthGate #catsAuthSubmit{display:none!important}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation-duration:.001ms!important;transition-duration:.001ms!important}}
