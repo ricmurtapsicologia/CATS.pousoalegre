@@ -22,8 +22,8 @@ add("04 período", "21–25/09/2026" in page)
 add("05 carga horária", "46 h/a" in page)
 add("06 coordenador", "Capitão BM Lucas Antônio de Oliveira" in page)
 add("07 título institucional", "Curso de Atendimento a Tentativas de Suicídio" in page)
-add("08 sem edição antiga", "CATS VII" not in page)
-add("09 sem local antigo", "Juiz de Fora" not in page)
+add("08 sem edição antiga", "CATS VII" not in page and "CATS) VII" not in page)
+add("09 sem local antigo", "Juiz de Fora" not in page and "4º BBM" not in page)
 add("10 ano de copyright", "© 2026" in page)
 
 # 11–20 — oito módulos preservados
@@ -93,7 +93,7 @@ add("70 navegação biblioteca", 'href="#recursos"' in page)
 
 # 71–80 — integridade e manutenção
 add("71 release meta", 'name="cats-release"' in page)
-add("72 release valor", "viii-cats-pa-2026-r1" in page)
+add("72 release valor", "viii-cats-pa-2026-r2" in page)
 add("73 README edição", "VIII CATS 2026" in readme)
 add("74 README coordenação", "Lucas Antônio de Oliveira" in readme)
 add("75 README autenticação", "mesma base canônica" in readme)
