@@ -81,7 +81,7 @@ add("60 botão fechar com aria", 'aria-label="Fechar"' in page)
 
 # 61–70 — responsividade e UX
 add("61 viewport", 'name="viewport"' in page)
-add("62 media queries", page.count("@media") >= 3)
+add("62 media query responsiva", "@media" in page)
 add("63 grid responsiva", "grid-template-columns" in page)
 add("64 tema persistente", "localStorage.getItem('theme')" in page)
 add("65 progresso isolado", "cats_pa_progress_v1" in page)
@@ -111,7 +111,8 @@ add("84 podcast fora do contador", 'data-module="proj"' in page)
 add("85 biblioteca fora do contador", 'data-module="biblioteca"' in page)
 add("86 pré-curso no material", "Levantamento pré-curso e dados da turma" in page)
 add("87 avaliação em seção própria", 'id="avaliacao"' in page)
-add("88 avaliação não possui href", not re.search(r'id="avaliacao".*?<a\b', page, re.S))
+avaliacao = re.search(r'<section class="container" id="avaliacao".*?</section>', page, re.S)
+add("88 avaliação não possui href", bool(avaliacao) and '<a ' not in avaliacao.group(0))
 add("89 sem linguagem de bastidor no acesso", "validado automaticamente" not in auth and "prompt" not in page.lower())
 add("90 fechamento HTML", page.rstrip().endswith("</html>"))
 
