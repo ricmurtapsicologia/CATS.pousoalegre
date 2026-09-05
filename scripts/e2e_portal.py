@@ -21,7 +21,6 @@ def auth_payload() -> str:
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
 
-    # Gate: identidade CATS, mesma base de credenciais e fluxo automático.
     context = browser.new_context(viewport={"width": 1280, "height": 900})
     page = context.new_page()
     page.goto(BASE, wait_until="networkidle")
@@ -32,7 +31,6 @@ with sync_playwright() as p:
     assert "Pouso Alegre" in (gate.text_content() or "")
     assert gate.locator("#catsAuthSubmit").count() == 0
 
-    # Sessão própria libera o portal sem expor credencial real no teste.
     page.evaluate("payload => sessionStorage.setItem('cats_pa_auth_v1', payload)", auth_payload())
     page.evaluate("localStorage.setItem('cats_pa_onboarded_v2','1')")
     page.reload(wait_until="networkidle")
@@ -41,26 +39,33 @@ with sync_playwright() as p:
     page.wait_for_selector("#aulas")
     page.wait_for_timeout(700)
 
-    # Malha oficial: 12 unidades, oito teóricas e quatro práticas.
-    for n in range(1, 13):
-        assert page.locator(f'#cards article[data-module="{n}"]').count() == 1, n
-    assert page.locator('#cards article[data-module="8"]', has_text="Prática de conversação").count() == 1
-    assert page.locator('#cards article[data-module="9"]', has_text="incêndio/explosão").count() == 1
-    assert page.locator('#cards article[data-module="10"]', has_text="precipitação").count() == 1
-    assert page.locator('#cards article[data-module="11"]', has_text="afogamento").count() == 1
-    assert page.locator('#cards article[data-module="12"]', has_text="Prevenção").count() == 1
+    # A página curricular contém exclusivamente oito aulas teóricas.
+    for n in range(1, 9):
+        lesson = page.locator(f'#cards article[data-module="{n}"]')
+        assert lesson.count() == 1, n
+        assert lesson.locator("img").count() == 1, f"Aula {n} sem imagem"
+    for n in range(9, 13):
+        assert page.locator(f'#cards article[data-module="{n}"]').count() == 0, n
+
+    body_text = page.locator("#cards").inner_text()
+    for forbidden in ("Prática de conversação em ATS", "Risco de incêndio/explosão", "Risco de precipitação", "Risco de afogamento"):
+        assert forbidden not in body_text, forbidden
+
+    assert page.locator('#cards article[data-module="8"]', has_text="Prevenção").count() == 1
     assert page.locator('article[data-module="proj"] a[href*="Podcast-ATS-CBMMG"]').count() == 1
     assert page.locator('article[data-module="biblioteca"] a[href*="Curso-ATS"]').count() == 1
     assert "Lucas Antônio de Oliveira" in page.locator(".coordination-card").inner_text()
-    assert "21–25/09/2026" in page.locator(".hero-card").inner_text()
+    assert "8 aulas" in page.locator(".hero-card").inner_text()
     assert "46 h/a" in page.locator(".hero-card").inner_text()
-    assert "12 unidades" in page.locator(".hero-card").inner_text()
 
-    # Desktop mantém conteúdo de aula visível e toggles mobile ocultos.
-    assert page.locator('#cards article[data-module="1"] .content').is_visible()
-    assert page.locator('#cards article[data-module="1"] .lesson-toggle').is_hidden()
+    # Desktop: cards ilustrados e conteúdo aberto, sem toggle mobile exposto.
+    first_desktop = page.locator('#cards article[data-module="1"]')
+    assert first_desktop.locator(".media").is_visible()
+    assert first_desktop.locator("img").is_visible()
+    assert first_desktop.locator(".content").is_visible()
+    assert first_desktop.locator(".lesson-toggle").is_hidden()
 
-    # Avaliação existe, fica fechada e sem link oficial inventado.
+    # Avaliação continua fechada por padrão e sem URL inventada.
     assert page.locator("#assessmentPanel").is_hidden()
     assert page.locator("#avaliacao a").count() == 0
     page.locator('#avaliacao .folder-toggle').click()
@@ -96,7 +101,7 @@ with sync_playwright() as p:
     assert fresh_page.locator("#catsAuthGate").is_visible()
     fresh.close()
 
-    # Mobile-first: menor densidade visual, menu e cascatas apenas por clique.
+    # Mobile-first: imagens permanecem; detalhes da aula abrem apenas por clique.
     mobile = browser.new_context(viewport={"width": 390, "height": 844})
     mobile.add_init_script(f"sessionStorage.setItem('cats_pa_auth_v1','{payload}'); localStorage.setItem('cats_pa_onboarded_v2','1');")
     m = mobile.new_page()
@@ -112,20 +117,22 @@ with sync_playwright() as p:
     assert m.locator("#mobileCoursePanel").is_hidden()
     m.locator("#courseInfoToggle").click()
     assert m.locator("#mobileCoursePanel").is_visible()
+    assert "8 teóricas" in m.locator("#mobileCoursePanel").inner_text()
 
-    # Menu principal inicia fechado e abre somente por botão.
     assert m.locator("#mainNavLinks").is_hidden()
     m.locator("#mobileMenuBtn").click()
     assert m.locator("#mainNavLinks").is_visible()
     m.locator("#mobileMenuBtn").click()
     assert m.locator("#mainNavLinks").is_hidden()
-
-    # Logout é integrado à barra, sem sobrepor o CTA/hero.
     assert m.locator(".nav-cta #catsAuthLogout").count() == 1
 
-    # Unidades começam fechadas; somente uma fica aberta por vez.
     first = m.locator('#cards article[data-module="1"]')
     second = m.locator('#cards article[data-module="2"]')
+    assert first.locator(".media").is_visible()
+    assert first.locator("img").is_visible()
+    assert second.locator("img").is_visible()
+    media_height = first.locator(".media").evaluate("el => Math.round(el.getBoundingClientRect().height)")
+    assert 100 <= media_height <= 140, media_height
     assert first.locator(".content").is_hidden()
     assert second.locator(".content").is_hidden()
     first.locator(".lesson-toggle").click()
@@ -134,7 +141,7 @@ with sync_playwright() as p:
     assert second.locator(".content").is_visible()
     assert first.locator(".content").is_hidden()
 
-    # Pastas permanecem fechadas até o clique explícito.
+    # Cascatas não exibem conteúdo antes do clique.
     assert m.locator("#materialsPanel").is_hidden()
     m.locator('[aria-controls="materialsPanel"]').click()
     assert m.locator("#materialsPanel").is_visible()
@@ -143,7 +150,6 @@ with sync_playwright() as p:
     assert m.locator("#videosGrid").is_visible()
     assert m.locator("#assessmentPanel").is_hidden()
 
-    # Elementos flutuantes de alta saliência não competem no mobile.
     assert m.locator(".fab").first.is_hidden()
     assert m.locator("#toTop").is_hidden()
 
@@ -151,4 +157,4 @@ with sync_playwright() as p:
     context.close()
     browser.close()
 
-print("PASS: E2E VIII CATS — auth, onboarding, 12 unidades, práticas, progressive disclosure, cascatas por clique, recursos, avaliação, pré-curso e mobile-first.")
+print("PASS: E2E VIII CATS — auth, onboarding, 8 aulas teóricas ilustradas, nenhuma disciplina prática, progressive disclosure, cascatas e mobile-first.")
