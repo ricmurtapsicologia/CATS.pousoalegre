@@ -26,3 +26,4 @@ jobs:
           git add index.html
           git commit -m 'CATS Pouso Alegre: onboarding e contato do coordenador'
           git push
+# retry-safe-2
