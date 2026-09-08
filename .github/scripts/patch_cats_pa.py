@@ -80,7 +80,7 @@ s = s.replace(old_contact, new_contact, 1)
 s = s.replace('Tenho%20uma%20dúvida%20sobre%20o%20CATS%202025.', 'Tenho%20uma%20dúvida%20sobre%20o%20VIII%20CATS%202026.', 1)
 
 required = [
-    '<body>', '</body>', '<main id="main">', '<footer id="contatos">',
+    '<body>', '</body>', '<main', '</main>', '<footer id="contatos">',
     'Caros(as) abordadores(as),', 'lucas.oliveira@bombeiros.mg.gov.br',
     '(35) 99744-3464', 'wa.me/5535984640729', 'function onboarding()',
     'VIII CATS 2026'
