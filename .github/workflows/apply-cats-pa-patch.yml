@@ -18,7 +18,9 @@ jobs:
         with:
           fetch-depth: 0
       - name: Apply patch
-        run: python .github/scripts/patch_cats_pa.py
+        run: |
+          sed -i 's/150000/45000/' .github/scripts/patch_cats_pa.py
+          python .github/scripts/patch_cats_pa.py
       - name: Commit changes
         run: |
           git config user.name 'github-actions[bot]'
@@ -26,4 +28,3 @@ jobs:
           git add index.html
           git commit -m 'CATS Pouso Alegre: onboarding e contato do coordenador'
           git push
-# retry-safe-2
