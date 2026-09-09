@@ -20,6 +20,60 @@
     Object.defineProperty(window, "__catsPaStorageMapped", { value: true });
   }
 
+  function loadSupplementalAuth() {
+    if (document.querySelector("script[data-cats-extra-auth]")) return;
+    const script = document.createElement("script");
+    script.src = "https://ricmurtapsicologia.github.io/Curso-ATS/auth-extra.js?v=20260909-1";
+    script.dataset.catsExtraAuth = "true";
+    document.head.appendChild(script);
+  }
+
+  function hasValidSession() {
+    try {
+      const data = JSON.parse(sessionStorage.getItem("cats_pa_auth_v1") || "null");
+      return Boolean(data && data.authenticated === true && Date.now() < Number(data.expiresAt || 0));
+    } catch {
+      return false;
+    }
+  }
+
+  function recoverFormAfterAuth() {
+    if (!hasValidSession()) return false;
+
+    const frame = document.getElementById("app");
+    if (!frame) return false;
+
+    try {
+      if (frame.contentDocument?.getElementById("catsForm")) return true;
+    } catch {}
+
+    if (frame.dataset.catsRecovery === "loading") return true;
+    frame.dataset.catsRecovery = "loading";
+
+    const boot = document.getElementById("boot");
+    if (boot) {
+      boot.hidden = false;
+      boot.textContent = "Carregando formulário…";
+    }
+    frame.classList.remove("ready");
+
+    const url = new URL("legacy.html", window.location.href);
+    url.searchParams.set("v", "2026.09.09-r6");
+    url.searchParams.set("auth", Date.now().toString(36));
+    frame.src = url.href;
+    return true;
+  }
+
+  function watchAuthenticatedForm() {
+    window.addEventListener("cats:authenticated", recoverFormAfterAuth);
+    if (recoverFormAfterAuth()) return;
+
+    const timer = window.setInterval(() => {
+      if (!recoverFormAfterAuth()) return;
+      window.clearInterval(timer);
+    }, 250);
+  }
+
   let autoTimer = 0;
   const digits = value => String(value || "").replace(/\D/g, "");
   const setText = (root, selector, value) => {
@@ -101,7 +155,7 @@
   function maintain(gate) {
     bindAutoAccess(gate);
     const msg = gate.querySelector("#catsAuthMessageText");
-    if (msg?.textContent?.includes("Abrindo o ambiente")) return;
+    if (msg?.textContent?.includes("Abrindo o ambiente")) recoverFormAfterAuth();
   }
 
   function observeGate() {
@@ -109,7 +163,7 @@
       const gate = document.getElementById("catsAuthGate");
       if (gate && !gate.__catsPaObserver) {
         const observer = new MutationObserver(() => maintain(gate));
-        observer.observe(gate, { childList: true, subtree: true, characterData: true });
+        observer.observe(gate, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["hidden"] });
         Object.defineProperty(gate, "__catsPaObserver", { value: observer });
       }
       return;
@@ -121,7 +175,7 @@
       const gate = document.getElementById("catsAuthGate");
       if (gate && !gate.__catsPaObserver) {
         const brandingObserver = new MutationObserver(() => maintain(gate));
-        brandingObserver.observe(gate, { childList: true, subtree: true, characterData: true });
+        brandingObserver.observe(gate, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["hidden"] });
         Object.defineProperty(gate, "__catsPaObserver", { value: brandingObserver });
       }
     });
@@ -135,6 +189,12 @@
     }, 5000);
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", observeGate, { once: true });
-  else observeGate();
+  function init() {
+    loadSupplementalAuth();
+    observeGate();
+    watchAuthenticatedForm();
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init, { once: true });
+  else init();
 })();
