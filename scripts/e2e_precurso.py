@@ -136,6 +136,12 @@ with sync_playwright() as p:
         frame.locator(f'input[name="{name}"]').first.check(force=True)
     assert frame.locator("[required]:invalid").count() == 0
 
+    # Mobile/touch antes do estado de sucesso ocultar o formulário.
+    assert page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2")
+    assert frame.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2")
+    assert frame.locator("#posto").evaluate("el => getComputedStyle(el).fontSize") == "16px"
+    assert frame.locator("#submitBtn").evaluate("el => el.getBoundingClientRect().height >= 44")
+
     # 9) Submissão ponta a ponta, mas sem gravar lixo no formulário real.
     # A requisição POST é interceptada e respondida localmente.
     frame.locator("#submitBtn").click()
@@ -144,15 +150,9 @@ with sync_playwright() as p:
     assert "Envio concluído" in frame.locator("#success").inner_text()
     assert "formulário oficial" in frame.locator("#success").inner_text()
     assert form.is_hidden()
-
-    # 10) Mobile-first.
-    assert page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2")
-    assert frame.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2")
-    assert frame.locator("#posto").evaluate("el => getComputedStyle(el).fontSize") == "16px"
-    assert frame.locator("#submitBtn").evaluate("el => el.getBoundingClientRect().height >= 44")
     context.close()
 
-    # 11) Acesso direto ao legado sem sessão deve voltar ao fluxo protegido.
+    # 10) Acesso direto ao legado sem sessão deve voltar ao fluxo protegido.
     fresh = browser.new_context(viewport={"width": 900, "height": 800})
     fresh_page = fresh.new_page()
     fresh_page.goto(LEGACY, wait_until="domcontentloaded")
