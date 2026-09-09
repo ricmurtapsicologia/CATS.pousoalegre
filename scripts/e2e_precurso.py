@@ -4,7 +4,6 @@ import json
 import re
 import sys
 import time
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8765/"
@@ -26,7 +25,9 @@ with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
 
     # ------------------------------------------------------------------
-    # 1) Gate real + transição autenticada no mesmo contexto.
+    # 1) Gate real + primeiro acesso sem recarregar a página.
+    # Reproduz a falha observada no Android: o legacy abre antes da sessão,
+    # redireciona dentro do iframe e o formulário precisa se recuperar após login.
     # ------------------------------------------------------------------
     context = browser.new_context(viewport={"width": 390, "height": 844})
     submitted = {"seen": False}
@@ -46,24 +47,27 @@ with sync_playwright() as p:
     assert "VIII CATS" in gate.inner_text()
     assert "Pouso Alegre" in gate.inner_text()
 
-    # O teste semeia somente o estado de sessão, sem publicar ou usar uma
-    # matrícula real. Repetimos o reload apenas para tolerar latência eventual
-    # do script de autenticação compartilhado hospedado externamente.
+    # Sentinela prova que a navegação principal não foi recarregada para corrigir o erro.
+    page.evaluate("window.__catsE2EFirstLoad = 'preservado'")
+
+    # Simula o resultado de uma autenticação válida, sem usar matrícula real.
+    # O código de produção deve reconstruir somente o iframe do formulário.
     payload = auth_payload()
-    ready = False
-    for _ in range(3):
-        page.evaluate("payload => sessionStorage.setItem('cats_pa_auth_v1', payload)", payload)
-        page.reload(wait_until="domcontentloaded")
-        try:
-            page.wait_for_selector("#app.ready", timeout=15000)
-            ready = True
-            break
-        except PlaywrightTimeoutError:
-            pass
-    assert ready, "O formulário não atingiu #app.ready após 3 tentativas controladas"
-    page.wait_for_selector("#catsAuthGate", state="attached", timeout=15000)
+    page.evaluate(
+        """payload => {
+          sessionStorage.setItem('cats_pa_auth_v1', payload);
+          const gate = document.getElementById('catsAuthGate');
+          if (gate) gate.hidden = true;
+          document.documentElement.classList.remove('cats-auth-locked');
+          window.dispatchEvent(new CustomEvent('cats:authenticated', {detail:{source:'e2e'}}));
+        }""",
+        payload,
+    )
+    page.wait_for_selector("#app.ready", timeout=15000)
+    assert page.evaluate("window.__catsE2EFirstLoad") == "preservado"
     assert page.locator("#catsAuthGate").is_hidden()
     assert page.locator("#boot").is_hidden()
+    assert "Não foi possível preparar" not in page.locator("body").inner_text()
 
     # ------------------------------------------------------------------
     # 2) Smoke dos metadados e da prévia social.
@@ -191,4 +195,4 @@ with sync_playwright() as p:
 
     browser.close()
 
-print("PASS: Smoke + E2E pré-curso CATS — gate, metadados, 3 etapas, 21 grupos, POST interceptado e mobile.")
+print("PASS: Smoke + E2E CATS — primeiro login sem refresh, gate, metadados, 3 etapas, 21 grupos, POST interceptado e mobile.")
