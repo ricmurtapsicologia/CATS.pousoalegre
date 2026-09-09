@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import re
 import sys
 import time
 from playwright.sync_api import sync_playwright
@@ -25,9 +24,8 @@ with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
 
     # ------------------------------------------------------------------
-    # 1) Gate real + primeiro acesso sem recarregar a página.
-    # Reproduz a falha observada no Android: o legacy abre antes da sessão,
-    # redireciona dentro do iframe e o formulário precisa se recuperar após login.
+    # 1) Gate real + formulário pré-carregado antes da autenticação.
+    # O aluno não deve esperar uma segunda navegação depois de informar a senha.
     # ------------------------------------------------------------------
     context = browser.new_context(viewport={"width": 390, "height": 844})
     submitted = {"seen": False}
@@ -47,11 +45,20 @@ with sync_playwright() as p:
     assert "VIII CATS" in gate.inner_text()
     assert "Pouso Alegre" in gate.inner_text()
 
-    # Sentinela prova que a navegação principal não foi recarregada para corrigir o erro.
+    # O conteúdo já deve estar preparado atrás do gate.
+    page.wait_for_selector("#app.ready", timeout=15000)
+    iframe_handle = page.locator("#app").element_handle()
+    assert iframe_handle is not None
+    frame = iframe_handle.content_frame()
+    assert frame is not None
+    assert frame.locator("#catsForm").count() == 1
+    assert page.locator("#boot").is_hidden()
+
+    # Sentinela prova que a navegação principal não foi recarregada.
     page.evaluate("window.__catsE2EFirstLoad = 'preservado'")
 
-    # Simula o resultado de uma autenticação válida, sem usar matrícula real.
-    # O código de produção deve reconstruir somente o iframe do formulário.
+    # Simula autenticação válida sem usar matrícula real.
+    start = time.perf_counter()
     payload = auth_payload()
     page.evaluate(
         """payload => {
@@ -63,11 +70,13 @@ with sync_playwright() as p:
         }""",
         payload,
     )
-    page.wait_for_selector("#app.ready", timeout=15000)
+    page.wait_for_function("document.getElementById('catsAuthGate')?.hidden === true", timeout=1500)
+    elapsed = time.perf_counter() - start
+    assert elapsed < 1.0, f"Transição pós-login lenta: {elapsed:.3f}s"
     assert page.evaluate("window.__catsE2EFirstLoad") == "preservado"
-    assert page.locator("#catsAuthGate").is_hidden()
     assert page.locator("#boot").is_hidden()
     assert "Não foi possível preparar" not in page.locator("body").inner_text()
+    assert frame.locator("#catsForm").count() == 1
 
     # ------------------------------------------------------------------
     # 2) Smoke dos metadados e da prévia social.
@@ -80,9 +89,6 @@ with sync_playwright() as p:
     assert page.locator('meta[property="og:image:secure_url"]').count() == 1
     assert page.locator('meta[name="twitter:card"][content="summary_large_image"]').count() == 1
     assert page.locator('link[rel="icon"]').count() == 1
-
-    frame = page.frame(url=re.compile(r"legacy\.html"))
-    assert frame is not None, [f.url for f in page.frames]
     assert frame.evaluate("sessionStorage.getItem('cats_pa_auth_v1')") is not None
 
     # ------------------------------------------------------------------
@@ -183,7 +189,7 @@ with sync_playwright() as p:
     context.close()
 
     # ------------------------------------------------------------------
-    # 11) Acesso direto ao legado sem sessão deve voltar ao fluxo protegido.
+    # 11) Acesso direto ao legado sem sessão continua protegido.
     # ------------------------------------------------------------------
     fresh = browser.new_context(viewport={"width": 900, "height": 800})
     fresh_page = fresh.new_page()
@@ -195,4 +201,4 @@ with sync_playwright() as p:
 
     browser.close()
 
-print("PASS: Smoke + E2E CATS — primeiro login sem refresh, gate, metadados, 3 etapas, 21 grupos, POST interceptado e mobile.")
+print("PASS: Smoke + E2E CATS — formulário pré-carregado, pós-login <1s, gate, 3 etapas, POST e mobile.")
