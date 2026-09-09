@@ -4,6 +4,7 @@ import json
 import re
 import sys
 import time
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8765/"
@@ -24,27 +25,10 @@ def auth_payload() -> str:
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
 
-    # 1) Smoke sem sessão: gate deve proteger o formulário.
-    unauth = browser.new_context(viewport={"width": 390, "height": 844})
-    u = unauth.new_page()
-    u.goto(PRE, wait_until="networkidle")
-    u.wait_for_selector('#catsAuthGate[data-cats-pa-branded="true"]', timeout=15000)
-    gate = u.locator("#catsAuthGate")
-    assert gate.is_visible()
-    assert "VIII CATS" in gate.inner_text()
-    assert "Pouso Alegre" in gate.inner_text()
-    unauth.close()
-
-    # 2) Cenário autenticado em contexto limpo.
-    # Grava tanto a chave mapeada do CATS quanto a canônica para eliminar disputa
-    # de inicialização entre os dois scripts de autenticação durante o teste.
-    payload = auth_payload()
-    auth = browser.new_context(viewport={"width": 390, "height": 844})
-    auth.add_init_script(
-        f"sessionStorage.setItem('cats_pa_auth_v1', {json.dumps(payload)});"
-        f"sessionStorage.setItem('curso_ats_auth_v3', {json.dumps(payload)});"
-    )
-
+    # ------------------------------------------------------------------
+    # 1) Gate real + transição autenticada no mesmo contexto.
+    # ------------------------------------------------------------------
+    context = browser.new_context(viewport={"width": 390, "height": 844})
     submitted = {"seen": False}
 
     def intercept_form(route):
@@ -53,15 +37,37 @@ with sync_playwright() as p:
         assert route.request.url.endswith("/formResponse")
         route.fulfill(status=200, content_type="text/html", body="<html><body>ok</body></html>")
 
-    auth.route("**/formResponse", intercept_form)
-    page = auth.new_page()
+    context.route("**/formResponse", intercept_form)
+    page = context.new_page()
     page.goto(PRE, wait_until="networkidle")
+    page.wait_for_selector('#catsAuthGate[data-cats-pa-branded="true"]', timeout=15000)
+    gate = page.locator("#catsAuthGate")
+    assert gate.is_visible()
+    assert "VIII CATS" in gate.inner_text()
+    assert "Pouso Alegre" in gate.inner_text()
+
+    # O teste semeia somente o estado de sessão, sem publicar ou usar uma
+    # matrícula real. Repetimos o reload apenas para tolerar latência eventual
+    # do script de autenticação compartilhado hospedado externamente.
+    payload = auth_payload()
+    ready = False
+    for _ in range(3):
+        page.evaluate("payload => sessionStorage.setItem('cats_pa_auth_v1', payload)", payload)
+        page.reload(wait_until="domcontentloaded")
+        try:
+            page.wait_for_selector("#app.ready", timeout=15000)
+            ready = True
+            break
+        except PlaywrightTimeoutError:
+            pass
+    assert ready, "O formulário não atingiu #app.ready após 3 tentativas controladas"
     page.wait_for_selector("#catsAuthGate", state="attached", timeout=15000)
     assert page.locator("#catsAuthGate").is_hidden()
-    page.wait_for_selector("#app.ready", timeout=15000)
     assert page.locator("#boot").is_hidden()
 
-    # 3) Smoke dos metadados e da prévia social.
+    # ------------------------------------------------------------------
+    # 2) Smoke dos metadados e da prévia social.
+    # ------------------------------------------------------------------
     assert page.locator('link[rel="canonical"]').get_attribute("href").endswith("/precurso.html")
     assert page.locator('meta[property="og:url"]').get_attribute("content").endswith("/precurso.html")
     assert page.locator('meta[property="og:title"]').count() == 1
@@ -75,7 +81,9 @@ with sync_playwright() as p:
     assert frame is not None, [f.url for f in page.frames]
     assert frame.evaluate("sessionStorage.getItem('cats_pa_auth_v1')") is not None
 
-    # 4) Pinpoint de identidade e resíduos.
+    # ------------------------------------------------------------------
+    # 3) Pinpoint de identidade e resíduos.
+    # ------------------------------------------------------------------
     hero = frame.locator("header.hero").inner_text().lower()
     assert "pouso alegre" in hero
     assert "7ª cia ind" in hero
@@ -84,7 +92,9 @@ with sync_playwright() as p:
     for forbidden in ("4º bbm", "4° bbm", "cats 2025"):
         assert forbidden not in body_text, forbidden
 
-    # 5) Estrutura e integração com Google Forms.
+    # ------------------------------------------------------------------
+    # 4) Estrutura e integração com Google Forms.
+    # ------------------------------------------------------------------
     form = frame.locator("#catsForm")
     assert form.count() == 1
     assert form.get_attribute("method").lower() == "post"
@@ -100,12 +110,16 @@ with sync_playwright() as p:
     assert frame.locator("#ocorrencia option").count() == 5
     assert frame.locator("#presenciou option").count() == 5
 
-    # 6) Validação negativa: vazio não pode avançar.
+    # ------------------------------------------------------------------
+    # 5) Validação negativa: vazio não pode avançar.
+    # ------------------------------------------------------------------
     frame.locator('[data-step="1"] [data-next]').click()
     assert "active" in (frame.locator('[data-step="1"]').get_attribute("class") or "")
     assert frame.locator(".error").evaluate_all("els => els.some(e => e.textContent.trim().length > 0)")
 
-    # 7) E2E etapa 1 com dados sintéticos.
+    # ------------------------------------------------------------------
+    # 6) E2E etapa 1 com dados sintéticos.
+    # ------------------------------------------------------------------
     frame.locator("#nome").fill("TESTE AUTOMATIZADO CATS")
     frame.locator("#posto").select_option(label="Cap")
     frame.locator("#tempo").select_option(index=1)
@@ -122,7 +136,9 @@ with sync_playwright() as p:
     assert "active" in (frame.locator('[data-step="2"]').get_attribute("class") or "")
     assert frame.locator("#progressLabel").inner_text() == "Etapa 2 de 3"
 
-    # 8) E2E etapa 2.
+    # ------------------------------------------------------------------
+    # 7) E2E etapa 2.
+    # ------------------------------------------------------------------
     frame.locator("#motivo").fill("Teste automatizado de fluxo ponta a ponta.")
     frame.locator("#ocorrencia").select_option(index=1)
     frame.locator("#presenciou").select_option(index=1)
@@ -130,7 +146,9 @@ with sync_playwright() as p:
     assert "active" in (frame.locator('[data-step="3"]').get_attribute("class") or "")
     assert frame.locator("#progressLabel").inner_text() == "Etapa 3 de 3"
 
-    # 9) E2E etapa 3: 21 grupos, todos mapeados de forma única.
+    # ------------------------------------------------------------------
+    # 8) E2E etapa 3: 21 grupos mapeados de forma única.
+    # ------------------------------------------------------------------
     assert frame.locator(".clinical-item").count() == 21
     names = frame.locator('.clinical-item input[type="radio"]').evaluate_all(
         "els => [...new Set(els.map(e => e.name))]"
@@ -141,29 +159,34 @@ with sync_playwright() as p:
         frame.locator(f'input[name="{name}"]').first.check(force=True)
     assert frame.locator("[required]:invalid").count() == 0
 
-    # 10) Mobile-first antes do estado de sucesso ocultar o formulário.
+    # ------------------------------------------------------------------
+    # 9) Mobile-first / alvo de toque.
+    # ------------------------------------------------------------------
     assert page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2")
     assert frame.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2")
     assert frame.locator("#posto").evaluate("el => getComputedStyle(el).fontSize") == "16px"
     assert frame.locator("#submitBtn").evaluate("el => el.getBoundingClientRect().height >= 44")
 
-    # 11) Submissão ponta a ponta sem gravar lixo no formulário real.
-    # O POST é interceptado e respondido localmente.
+    # ------------------------------------------------------------------
+    # 10) Submissão ponta a ponta sem gravar dados falsos no formulário real.
+    # ------------------------------------------------------------------
     frame.locator("#submitBtn").click()
     frame.locator("#success").wait_for(state="visible", timeout=10000)
     assert submitted["seen"]
     assert "Envio concluído" in frame.locator("#success").inner_text()
     assert "formulário oficial" in frame.locator("#success").inner_text()
     assert form.is_hidden()
-    auth.close()
+    context.close()
 
-    # 12) Acesso direto ao legado sem sessão deve voltar ao fluxo protegido.
+    # ------------------------------------------------------------------
+    # 11) Acesso direto ao legado sem sessão deve voltar ao fluxo protegido.
+    # ------------------------------------------------------------------
     fresh = browser.new_context(viewport={"width": 900, "height": 800})
-    fpage = fresh.new_page()
-    fpage.goto(LEGACY, wait_until="domcontentloaded")
-    fpage.wait_for_url("**/precurso.html", timeout=10000)
-    fpage.wait_for_selector('#catsAuthGate[data-cats-pa-branded="true"]', timeout=15000)
-    assert fpage.locator("#catsAuthGate").is_visible()
+    fresh_page = fresh.new_page()
+    fresh_page.goto(LEGACY, wait_until="domcontentloaded")
+    fresh_page.wait_for_url("**/precurso.html", timeout=10000)
+    fresh_page.wait_for_selector('#catsAuthGate[data-cats-pa-branded="true"]', timeout=15000)
+    assert fresh_page.locator("#catsAuthGate").is_visible()
     fresh.close()
 
     browser.close()
