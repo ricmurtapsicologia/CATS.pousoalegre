@@ -70,12 +70,14 @@ with sync_playwright() as p:
 
     # 3) Pinpoint de identidade e resíduos.
     hero = frame.locator("header.hero").inner_text()
-    assert "Pouso Alegre" in hero
-    assert "7ª Cia Ind" in hero
-    assert "Lucas Antônio de Oliveira" in hero
+    hero_lower = hero.lower()
+    assert "pouso alegre" in hero_lower
+    assert "7ª cia ind" in hero_lower
+    assert "lucas antônio de oliveira" in hero_lower
     body_text = frame.locator("body").inner_text()
-    for forbidden in ("4º BBM", "4° BBM", "CATS 2025"):
-        assert forbidden not in body_text, forbidden
+    body_lower = body_text.lower()
+    for forbidden in ("4º bbm", "4° bbm", "cats 2025"):
+        assert forbidden not in body_lower, forbidden
 
     # 4) Estrutura e integração com Google Forms.
     form = frame.locator("#catsForm")
