@@ -5,6 +5,10 @@
     curso_ats_auth_v3: "cats_pa_auth_v1",
     ats_login_attempts_v3: "cats_pa_login_attempts_v1"
   });
+  const PRELOAD_URL = "legacy.html?v=2026.09.09-r7";
+  const LEGACY_GUARD = /<script\s+data-cats-legacy-guard=["']1["'][^>]*>[\s\S]*?<\/script>/i;
+  let preloadPromise = null;
+  let preloadedHtml = "";
 
   const storageProto = Storage.prototype;
   if (!window.__catsPaStorageMapped) {
@@ -37,17 +41,47 @@
     }
   }
 
-  function recoverFormAfterAuth() {
-    if (!hasValidSession()) return false;
-
-    const frame = document.getElementById("app");
-    if (!frame) return false;
-
+  function frameHasForm(frame) {
     try {
-      if (frame.contentDocument?.getElementById("catsForm")) return true;
-    } catch {}
+      return Boolean(frame?.contentDocument?.getElementById("catsForm"));
+    } catch {
+      return false;
+    }
+  }
 
-    if (frame.dataset.catsRecovery === "loading") return true;
+  function primeFormFrame() {
+    const frame = document.getElementById("app");
+    if (!frame) return Promise.resolve(false);
+    if (frameHasForm(frame)) return Promise.resolve(true);
+
+    if (!preloadPromise) {
+      preloadPromise = fetch(PRELOAD_URL, { cache: "force-cache", credentials: "same-origin" })
+        .then(response => {
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.text();
+        })
+        .then(html => {
+          preloadedHtml = html.replace(LEGACY_GUARD, "");
+          return preloadedHtml;
+        })
+        .catch(error => {
+          console.warn("[CATS] Pré-carregamento do formulário indisponível; usando fallback.", error);
+          preloadedHtml = "";
+          return "";
+        });
+    }
+
+    return preloadPromise.then(html => {
+      if (!html || frameHasForm(frame)) return frameHasForm(frame);
+      if (frame.dataset.catsPreloadInjected === "1") return true;
+      frame.dataset.catsPreloadInjected = "1";
+      frame.srcdoc = html;
+      return true;
+    });
+  }
+
+  function navigateFallback(frame) {
+    if (!frame || frame.dataset.catsRecovery === "loading") return;
     frame.dataset.catsRecovery = "loading";
 
     const boot = document.getElementById("boot");
@@ -58,9 +92,27 @@
     frame.classList.remove("ready");
 
     const url = new URL("legacy.html", window.location.href);
-    url.searchParams.set("v", "2026.09.09-r6");
+    url.searchParams.set("v", "2026.09.09-r7");
     url.searchParams.set("auth", Date.now().toString(36));
     frame.src = url.href;
+  }
+
+  function recoverFormAfterAuth() {
+    if (!hasValidSession()) return false;
+
+    const frame = document.getElementById("app");
+    if (!frame) return false;
+    if (frameHasForm(frame)) return true;
+
+    if (preloadedHtml) {
+      frame.dataset.catsPreloadInjected = "1";
+      frame.srcdoc = preloadedHtml;
+      return true;
+    }
+
+    primeFormFrame().then(ok => {
+      if (!ok && !frameHasForm(frame)) navigateFallback(frame);
+    });
     return true;
   }
 
@@ -190,6 +242,7 @@
   }
 
   function init() {
+    primeFormFrame();
     loadSupplementalAuth();
     observeGate();
     watchAuthenticatedForm();
