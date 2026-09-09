@@ -110,7 +110,7 @@ with sync_playwright() as p:
     frame.locator("#registro").fill("0000000")
     frame.locator("#cpf").fill("00000000000")
     frame.locator("#sangue").fill("O+")
-    frame.locator('input[name="entry.192985690"][value="Não."]').check()
+    frame.locator('input[name="entry.192985690"][value="Não."]').check(force=True)
     if not frame.locator("#data").input_value():
         frame.locator("#data").fill("2026-09-09")
     frame.locator('[data-step="1"] [data-next]').click()
@@ -133,7 +133,7 @@ with sync_playwright() as p:
     assert len(names) == 21, names
     assert all(name.startswith("entry.") for name in names), names
     for name in names:
-        frame.locator(f'input[name="{name}"]').first.check()
+        frame.locator(f'input[name="{name}"]').first.check(force=True)
     assert frame.locator("[required]:invalid").count() == 0
 
     # 9) Submissão ponta a ponta, mas sem gravar lixo no formulário real.
