@@ -10,7 +10,6 @@ on:
       - 'cats-auth.js'
       - 'cats-auth.css'
       - 'scripts/e2e_precurso.py'
-      - 'scripts/diag_precurso.py'
   workflow_dispatch: {}
 
 permissions:
@@ -37,9 +36,6 @@ jobs:
           for i in {1..30}; do curl -fsS http://127.0.0.1:8765/precurso.html >/dev/null && exit 0; sleep 0.5; done
           cat /tmp/cats-pre-http.log
           exit 1
-
-      - name: Diagnóstico DOM do pré-curso
-        run: python scripts/diag_precurso.py http://127.0.0.1:8765/
 
       - name: Smoke + E2E do formulário
         run: python scripts/e2e_precurso.py http://127.0.0.1:8765/
