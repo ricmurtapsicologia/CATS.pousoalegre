@@ -1,0 +1,41 @@
+name: CATS Pré-curso — Smoke e E2E
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/precurso-smoke-e2e.yml'
+      - 'precurso.html'
+      - 'legacy.html'
+      - 'cats-auth.js'
+      - 'cats-auth.css'
+      - 'scripts/e2e_precurso.py'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Instalar Playwright
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
+
+      - name: Servir página localmente
+        run: |
+          python -m http.server 8765 --bind 127.0.0.1 > /tmp/cats-pre-http.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8765/precurso.html >/dev/null && exit 0; sleep 0.5; done
+          cat /tmp/cats-pre-http.log
+          exit 1
+
+      - name: Smoke + E2E do formulário
+        run: python scripts/e2e_precurso.py http://127.0.0.1:8765/
