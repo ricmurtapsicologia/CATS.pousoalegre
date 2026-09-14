@@ -37,7 +37,7 @@
     injectManualCta();
   }
 
-  load('https://ricmurtapsicologia.github.io/Curso-ATS/auth-extra-20260914.js?v=20260914-1','auth-extra-20260914.js');
+  load('https://ricmurtapsicologia.github.io/Curso-ATS/auth-extra-20260914.js?v=20260914-2','auth-extra-20260914.js');
   load('https://ricmurtapsicologia.github.io/Curso-ATS/access-2026.js?v=20260909-1','access-2026.js');
   load('portal-ui-core.js?v=20260909-1','portal-ui-core.js');
   load('presentation-originals.js?v=20260909-2','presentation-originals.js');
