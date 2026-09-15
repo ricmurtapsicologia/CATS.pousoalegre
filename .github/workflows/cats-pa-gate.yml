@@ -8,6 +8,7 @@ on:
       - 'scripts/build_portal.py'
       - 'scripts/build_portal_entry.py'
       - 'scripts/finalize_theory_surface.py'
+      - 'scripts/performance_hotfix.py'
       - 'scripts/qa_30_30.py'
       - 'scripts/qa_90_90.py'
       - 'scripts/e2e_portal.py'
@@ -15,6 +16,7 @@ on:
       - 'cats-auth.css'
       - 'portal-ui.css'
       - 'portal-ui.js'
+      - 'portal-ui-core.js'
   workflow_dispatch: {}
 
 permissions:
@@ -37,6 +39,9 @@ jobs:
 
       - name: Sanear superfície final para oito aulas teóricas
         run: python scripts/finalize_theory_surface.py
+
+      - name: Aplicar hotfix persistente de performance
+        run: python scripts/performance_hotfix.py
 
       - name: Auditoria 30/30 — técnica e institucional
         run: python scripts/qa_30_30.py
