@@ -87,18 +87,18 @@ add("50 fail closed", "cats-auth-failed" in auth and "cats-auth-failed" in auth_
 add("51 noindex", "noindex,nofollow,noarchive" in page)
 add("52 sem credencial crua", all(x not in page for x in ("baseValidas", "novasMatriculas", "terapiadoesquema")))
 add("53 sem Tawk", "embed.tawk.to" not in page and "Tawk.to" not in page)
-add("54 precurso e legado protegidos", "cats-auth.js?v=20260905-1" in pre and "data-cats-legacy-guard" in legacy)
+add("54 precurso e legado protegidos", "cats-auth.js?v=20260909-2" in pre and "data-cats-legacy-guard" in legacy)
 
 # 55–64 — onboarding e ergonomia afetiva
-add("55 boas-vindas", "Boas-vindas ao VIII CATS 2026" in page)
-add("56 fala coordenador", "Seja bem-vindo(a) ao VIII Curso" in page)
+add("55 boas-vindas", "Caros(as) abordadores(as)," in page)
+add("56 fala coordenador", "Esta página reúne as aulas, os objetivos e os materiais de apoio" in page)
 add("57 assinatura coordenador", "Coordenador do VIII CATS 2026" in page)
 add("58 texto justificado", "text-align:justify" in portal_css)
 add("59 hifenização", "hyphens:auto" in portal_css)
 add("60 onboarding rolável", "max-height:90dvh" in portal_css and "overflow:auto" in portal_css)
 add("61 CTA entrada", "Entrar na trilha" in page)
 add("62 orientação compacta", page.count('class="onboard-list"') == 1)
-add("63 mensagem de autonomia", "avance no seu ritmo" in page)
+add("63 mensagem de autonomia", "Use este ambiente como apoio à formação presencial" in page and "Seu progresso fica salvo neste navegador" in page)
 add("64 linguagem coerente", "toque no card para abrir uma de cada vez" in page)
 
 # 65–74 — mobile-first e ergonomia cognitiva
