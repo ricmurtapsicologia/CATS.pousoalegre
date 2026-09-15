@@ -95,7 +95,7 @@ with sync_playwright() as p:
     w.goto(BASE, wait_until="networkidle")
     w.wait_for_selector("#onboard", state="visible", timeout=7000)
     assert "Lucas Antônio de Oliveira" in w.locator("#onboard").inner_text()
-    assert "Boas-vindas" in w.locator("#onboard").inner_text()
+    assert "Caros(as) abordadores(as)," in w.locator("#onboard").inner_text()
     assert "avaliação" not in w.locator("#onboard").inner_text().lower()
     text_align = w.locator(".onboard-welcome p").first.evaluate("el => getComputedStyle(el).textAlign")
     assert text_align == "justify", text_align
