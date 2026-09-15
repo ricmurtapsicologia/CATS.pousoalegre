@@ -95,6 +95,14 @@
     });
   }
 
+  function hydrateDeferredFrames(panel) {
+    $$("iframe[data-src]", panel).forEach(frame => {
+      if (frame.getAttribute("src")) return;
+      const src = frame.dataset.src;
+      if (src) frame.setAttribute("src", src);
+    });
+  }
+
   function setupFolders() {
     $$(".folder-toggle").forEach(button => {
       const id = button.getAttribute("aria-controls");
@@ -106,6 +114,7 @@
         const opening = panel.hidden;
         panel.hidden = !opening;
         button.setAttribute("aria-expanded", String(opening));
+        if (opening) hydrateDeferredFrames(panel);
       });
     });
   }
