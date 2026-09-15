@@ -5,8 +5,8 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/cats-pa-gate.yml'
-      - 'scripts/build_portal.py'
-      - 'scripts/build_portal_entry.py'
+      - 'index.html'
+      - 'precurso.html'
       - 'scripts/finalize_theory_surface.py'
       - 'scripts/performance_hotfix.py'
       - 'scripts/qa_30_30.py'
@@ -34,8 +34,10 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Construir portal preservando a página de pré-curso
-        run: python scripts/build_portal_entry.py
+      - name: Usar a página atual como fonte canônica
+        run: |
+          test -s index.html
+          test -s precurso.html
 
       - name: Sanear superfície final para oito aulas teóricas
         run: python scripts/finalize_theory_surface.py
