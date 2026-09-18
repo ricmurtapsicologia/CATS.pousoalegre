@@ -1,0 +1,102 @@
+name: CATS Pré-curso — preenchimento real de teste
+
+on:
+  push:
+    branches:
+      - qa/live-precurso-fill-20260918
+    paths:
+      - .github/workflows/live-precurso-fill-test.yml
+
+permissions:
+  contents: read
+
+jobs:
+  live-fill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Instalar Chromium
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
+      - name: Preencher e enviar página publicada
+        env:
+          LIVE_URL: https://ricmurtapsicologia.github.io/CATS.pousoalegre/precurso.html
+        run: |
+          python - <<'PY'
+          import json, os, time
+          from playwright.sync_api import sync_playwright
+
+          url = os.environ['LIVE_URL'] + '?qa_live=' + os.environ.get('GITHUB_RUN_ID','manual')
+          token = f"QA-LIVE-{os.environ.get('GITHUB_RUN_ID','manual')}"
+          now = int(time.time() * 1000)
+          session = json.dumps({
+              'authenticated': True,
+              'createdAt': now,
+              'expiresAt': now + 8 * 60 * 60 * 1000,
+              'version': 3,
+          })
+
+          with sync_playwright() as p:
+              browser = p.chromium.launch(headless=True)
+              context = browser.new_context(viewport={'width': 390, 'height': 844})
+              context.add_init_script(f"""
+                sessionStorage.setItem('cats_pa_auth_v1', {json.dumps(session)});
+                localStorage.setItem('ric_analytics_consent', 'denied');
+              """)
+              page = context.new_page()
+              page.goto(url, wait_until='networkidle', timeout=60000)
+              page.wait_for_selector('#app.ready', timeout=30000)
+              frame = page.locator('#app').element_handle().content_frame()
+              assert frame is not None
+              frame.wait_for_selector('#catsForm', timeout=20000)
+
+              frame.locator('#nome').fill(f'TESTE AUTOMATIZADO CATS {token}')
+              frame.locator('#posto').select_option(index=1)
+              frame.locator('#tempo').select_option(index=1)
+              frame.locator('#email').fill(f'cats.precurso.{os.environ.get("GITHUB_RUN_ID","manual")}@example.com')
+              frame.locator('#instituicao').fill('CBMMG - TESTE E2E')
+              frame.locator('#unidade').fill('QA AUTOMATIZADA')
+              frame.locator('#registro').fill('0000000')
+              frame.locator('#cpf').fill('11144477735')
+              frame.locator('#sangue').fill('O+')
+              frame.locator('input[name="entry.192985690"][value="Não."]').check(force=True)
+              frame.locator('#data').fill('2026-09-18')
+              frame.locator('[data-step="1"] [data-next]').click()
+              frame.locator('#motivo').fill(f'Teste automatizado real de persistência {token}.')
+              frame.locator('#ocorrencia').select_option(label='Nunca atendi.')
+              frame.locator('#presenciou').select_option(index=1)
+              frame.locator('[data-step="2"] [data-next]').click()
+
+              groups = frame.locator('.clinical-item input[type="radio"]').evaluate_all(
+                  "els => [...new Set(els.map(e => e.name))]"
+              )
+              assert len(groups) == 21, groups
+              for name in groups:
+                  frame.locator(f'input[name="{name}"]').first.check(force=True)
+
+              assert frame.locator('[required]:invalid').count() == 0
+              frame.locator('#submitBtn').click()
+              frame.locator('#catsPersistenceStatus').wait_for(state='visible', timeout=15000)
+              print('TEST_TOKEN=' + token)
+              print('STATUS_INICIAL=' + frame.locator('#catsPersistenceStatus').inner_text())
+
+              try:
+                  frame.locator('#success').wait_for(state='visible', timeout=90000)
+              except Exception:
+                  print('STATUS_FINAL=' + frame.locator('#catsPersistenceStatus').inner_text())
+                  print('CONFIRMED=' + str(frame.locator('#success').get_attribute('data-persistence-confirmed')))
+                  raise
+
+              success = frame.locator('#success').inner_text()
+              confirmed = frame.locator('#success').get_attribute('data-persistence-confirmed')
+              print('SUCCESS_TEXT=' + success.replace('\n',' | '))
+              print('CONFIRMED=' + str(confirmed))
+              assert confirmed == 'true'
+              assert 'Preenchimento confirmado' in success
+              assert 'planilha oficial' in success
+              browser.close()
+          PY
