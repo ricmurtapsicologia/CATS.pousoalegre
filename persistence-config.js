@@ -6,17 +6,60 @@
   const ENDPOINT = 'https://script.google.com/macros/s/AKfycbzOINm3ehG2ojEuSyFSYIuOfKciTGTg37GZ4lvC_AKfV0_00nU4GU8uxFwOpgefPTE/exec';
   const AUTO_RETRY_DELAY_MS = 4000;
   const MAX_AUTO_RETRIES = 20;
-  const CONTRACT_VERSION = '2026.09.18-r12-forms-contract';
+  const CONTRACT_VERSION = '2026.09.18-r13-fingerprint-iso';
 
   window.CATS_PERSISTENCE_VERIFY_URL = ENDPOINT;
   window.__CATS_PERSISTENCE_CONFIG_VERSION__ = CONTRACT_VERSION;
 
+  function normalizedText(value) {
+    return String(value ?? '').normalize('NFKC').replace(/\s+/g, ' ').trim();
+  }
+
+  function canonicalIsoDate(value) {
+    const raw = String(value ?? '').trim();
+    let m = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (m) return raw;
+    m = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+    return raw;
+  }
+
+  async function sha256Hex(text) {
+    const bytes = new TextEncoder().encode(text);
+    const hash = await crypto.subtle.digest('SHA-256', bytes);
+    return [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  // Recalcula o fingerprint usando exatamente o mesmo contrato canônico do
+  // backend/planilha: nome | melhor e-mail | CPF numérico | data ISO yyyy-mm-dd.
+  // Isso elimina a divergência anterior DD/MM/AAAA x AAAA-MM-DD.
+  async function fingerprintFromLiveForm() {
+    try {
+      const frame = document.getElementById('app');
+      const form = frame?.contentDocument?.getElementById('catsForm');
+      if (!form) return '';
+      const canonical = [
+        normalizedText(form.elements['entry.1067284683']?.value).toUpperCase(),
+        normalizedText(form.elements['entry.1556369182']?.value).toLowerCase(),
+        String(form.elements['entry.426148251']?.value ?? '').replace(/\D/g, ''),
+        canonicalIsoDate(form.elements['entry.2092238618']?.value),
+      ].join('|');
+      if (!canonical.replace(/\|/g, '')) return '';
+      return await sha256Hex(canonical);
+    } catch (error) {
+      console.warn('[CATS persistence] fingerprint normalization failed', error);
+      return '';
+    }
+  }
+
   // Neutraliza clock skew do dispositivo: a identidade é conferida por
   // fingerprint + IDs oficiais; o relógio local não exclui linhas válidas.
   window.__CATS_PERSISTENCE_VERIFY__ = async payload => {
+    const liveFingerprint = await fingerprintFromLiveForm();
     const requestPayload = {
       ...payload,
       submittedAtEpochMs: 0,
+      fingerprint: liveFingerprint || payload.fingerprint,
     };
 
     try {
@@ -32,7 +75,11 @@
       if (!response.ok) {
         return {persisted: false, terminal: false, reason: `http-${response.status}`};
       }
-      return await response.json();
+      const result = await response.json();
+      if (result?.persisted === true && liveFingerprint) {
+        result.fingerprint = liveFingerprint;
+      }
+      return result;
     } catch (error) {
       console.warn('[CATS persistence] verifier request failed', error);
       return {persisted: false, terminal: false, reason: 'network-error'};
