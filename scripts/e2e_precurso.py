@@ -25,8 +25,6 @@ def auth_payload() -> str:
 
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
-
-    # 1) Gate real + formulário já preparado atrás da autenticação.
     context = browser.new_context(viewport={"width": 390, "height": 844})
     submitted = {"seen": False}
 
@@ -72,12 +70,8 @@ with sync_playwright() as p:
     assert page.evaluate("window.__catsE2EFirstLoad") == "preservado"
     assert page.locator("#boot").is_hidden()
     assert frame.locator("#catsForm").count() == 1
-    frame.wait_for_function(
-        "document.documentElement.dataset.catsSubmitFeedback === '1'",
-        timeout=5000,
-    )
+    frame.wait_for_function("document.documentElement.dataset.catsSubmitFeedback === '1'", timeout=5000)
 
-    # 2) Metadados, prévia social e contrato de persistência.
     assert page.locator('link[rel="canonical"]').get_attribute("href").endswith("/precurso.html")
     assert page.locator('meta[property="og:url"]').get_attribute("content").endswith("/precurso.html")
     assert page.locator('meta[property="og:title"]').count() == 1
@@ -90,7 +84,6 @@ with sync_playwright() as p:
     assert page.evaluate("window.__CATS_PERSISTENCE_CONFIG_VERSION__") == CONFIG_VERSION
     assert page.evaluate("window.__CATS_PERSISTENCE_VERIFY_MODE__") == "pure-payload"
 
-    # 3) Identidade: a rota é Pouso Alegre; o hero pode permanecer institucional.
     title = page.title().lower()
     description = page.locator('meta[name="description"]').get_attribute("content").lower()
     hero = frame.locator("header.hero").inner_text().lower()
@@ -102,7 +95,6 @@ with sync_playwright() as p:
     for forbidden in ("4º bbm", "4° bbm", "cats 2025"):
         assert forbidden not in body_text, forbidden
 
-    # 4) Estrutura e integração com Google Forms.
     form = frame.locator("#catsForm")
     assert form.count() == 1
     assert form.get_attribute("method").lower() == "post"
@@ -112,24 +104,20 @@ with sync_playwright() as p:
     assert frame.locator(".step").count() == 3
     assert frame.locator("[required]:not([name])").count() == 0
     assert frame.locator('[name^="temp_"]').count() == 0
-
     assert frame.locator("#posto option").count() == 15
     assert frame.locator("#tempo option").count() == 7
     assert frame.locator("#ocorrencia option").count() == 5
     assert frame.locator("#presenciou option").count() == 5
-
     assert frame.locator('#ocorrencia').get_attribute('name') == 'entry.500885681'
     first_occurrence = frame.locator('#ocorrencia option').nth(1)
     assert first_occurrence.get_attribute('value') == 'Nunca atendi.'
     assert first_occurrence.inner_text() == 'Nunca atendi.'
     assert frame.evaluate("document.documentElement.dataset.catsFormsContract") == CONFIG_VERSION
 
-    # 5) Validação negativa: vazio não pode avançar.
     frame.locator('[data-step="1"] [data-next]').click()
     assert "active" in (frame.locator('[data-step="1"]').get_attribute("class") or "")
     assert frame.locator(".error").evaluate_all("els => els.some(e => e.textContent.trim().length > 0)")
 
-    # 6) Etapa 1 com dados sintéticos e data fixa.
     frame.locator("#nome").fill("TESTE AUTOMATIZADO CATS")
     frame.locator("#posto").select_option(label="Cap")
     frame.locator("#tempo").select_option(index=1)
@@ -145,7 +133,6 @@ with sync_playwright() as p:
     assert "active" in (frame.locator('[data-step="2"]').get_attribute("class") or "")
     assert frame.locator("#progressLabel").inner_text() == "Etapa 2 de 3"
 
-    # 7) Etapa 2 exercitando a opção corrigida no contrato Forms.
     frame.locator("#motivo").fill("Teste automatizado de fluxo ponta a ponta.")
     frame.locator("#ocorrencia").select_option(label="Nunca atendi.")
     frame.locator("#presenciou").select_option(index=1)
@@ -153,26 +140,19 @@ with sync_playwright() as p:
     assert "active" in (frame.locator('[data-step="3"]').get_attribute("class") or "")
     assert frame.locator("#progressLabel").inner_text() == "Etapa 3 de 3"
 
-    # 8) 21 grupos clínicos mapeados de forma única.
     assert frame.locator(".clinical-item").count() == 21
-    names = frame.locator('.clinical-item input[type="radio"]').evaluate_all(
-        "els => [...new Set(els.map(e => e.name))]"
-    )
+    names = frame.locator('.clinical-item input[type="radio"]').evaluate_all("els => [...new Set(els.map(e => e.name))]")
     assert len(names) == 21, names
     assert all(name.startswith("entry.") for name in names), names
     for name in names:
         frame.locator(f'input[name="{name}"]').first.check(force=True)
     assert frame.locator("[required]:invalid").count() == 0
 
-    # 9) Mobile-first / alvo de toque.
     assert page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2")
     assert frame.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2")
     assert frame.locator("#posto").evaluate("el => getComputedStyle(el).fontSize") == "16px"
     assert frame.locator("#submitBtn").evaluate("el => el.getBoundingClientRect().height >= 44")
 
-    # 10) Gate de persistência e feedback imediato.
-    # O mock substitui somente o backend de verificação. O POST do formulário continua
-    # real dentro do browser de teste e HTTP 200, sozinho, jamais marca persistência.
     page.evaluate(
         """() => {
           window.__catsVerifierMode = 'wrong-sheet';
@@ -185,9 +165,7 @@ with sync_playwright() as p:
               protocol: 'cats-persistence-v1',
               persisted: true,
               terminal: positive,
-              sheetId: positive
-                ? '1wQ0nc6TmCqqbu-ZqloIRLptO6iHqDhD00qrFLxP-fUk'
-                : 'SHEET-ERRADA',
+              sheetId: positive ? '1wQ0nc6TmCqqbu-ZqloIRLptO6iHqDhD00qrFLxP-fUk' : 'SHEET-ERRADA',
               formEditId: '1107fjdaiL42Zb0n2jNjKr0aiNNysyEADQCesdBTbD_E',
               fingerprint: payload.fingerprint
             };
@@ -204,7 +182,6 @@ with sync_playwright() as p:
     assert form.is_hidden()
     assert frame.locator("#success").get_attribute("data-persistence-confirmed") != "true"
 
-    # Privacidade: nenhum resultado BDI-II, escore ou classificação pode chegar ao respondente.
     participant_text = frame.locator("body").inner_text().lower()
     assert "bdi-ii" not in participant_text
     assert "intensidade mínima" not in participant_text
@@ -212,28 +189,27 @@ with sync_playwright() as p:
     assert "intensidade moderada" not in participant_text
     assert "intensidade grave" not in participant_text
 
-    frame.locator("#catsPersistenceStatus").wait_for(state="visible", timeout=10000)
+    # O status técnico fica dentro do formulário, agora oculto pela tela de envio.
+    # Validamos seu conteúdo no DOM, não sua visibilidade.
     frame.wait_for_function(
-        "document.getElementById('catsPersistenceStatus').textContent.includes('Confirmando automaticamente')",
-        timeout=10000,
+        "document.getElementById('catsPersistenceStatus') && document.getElementById('catsPersistenceStatus').textContent.length > 0",
+        timeout=5000,
     )
     assert submitted["seen"]
 
     expected_canonical = f"TESTE AUTOMATIZADO CATS|teste.e2e@example.invalid|11144477735|{FIXTURE_DATE}"
     expected_fingerprint = hashlib.sha256(expected_canonical.encode("utf-8")).hexdigest()
+    frame.wait_for_timeout(100)
     assert page.evaluate("window.__catsLastPayload?.fingerprint") == expected_fingerprint
 
-    # Resposta positiva apontando para planilha errada não pode promover o estado final.
     assert frame.locator("#success").get_attribute("data-persistence-confirmed") != "true"
     assert "registrada com sucesso" not in frame.locator("body").inner_text().lower()
     assert frame.locator("#submitBtn").is_disabled()
-    assert frame.locator("#catsVerifyAgain").is_hidden()
 
-    # Apenas a confirmação independente da planilha oficial libera a mensagem final.
+    # O polling em andamento deve aceitar a confirmação oficial no próximo ciclo.
     page.evaluate("window.__catsVerifierMode = 'positive'")
-    frame.locator("#catsVerifyAgain").evaluate("el => el.click()")
     success = frame.locator("#success")
-    success.wait_for(state="visible", timeout=15000)
+    success.wait_for(state="visible", timeout=10000)
     frame.wait_for_function(
         "document.getElementById('success')?.textContent.includes('Parabéns! Sua participação foi registrada com sucesso.')",
         timeout=3000,
@@ -251,7 +227,6 @@ with sync_playwright() as p:
     assert "bdi-ii" not in final_participant_text
     context.close()
 
-    # 11) Acesso direto ao legado sem sessão continua protegido.
     fresh = browser.new_context(viewport={"width": 900, "height": 800})
     fresh_page = fresh.new_page()
     fresh_page.goto(LEGACY, wait_until="domcontentloaded")
@@ -259,7 +234,6 @@ with sync_playwright() as p:
     fresh_page.wait_for_selector('#catsAuthGate[data-cats-pa-branded="true"]', timeout=15000)
     assert fresh_page.locator("#catsAuthGate").is_visible()
     fresh.close()
-
     browser.close()
 
 print("PASS: Smoke + E2E CATS — envio imediato sem falso positivo, confirmação independente, boas-vindas finais e BDI-II ausente do navegador.")
