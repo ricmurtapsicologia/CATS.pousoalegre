@@ -6,9 +6,10 @@
   const ENDPOINT = 'https://script.google.com/macros/s/AKfycbzOINm3ehG2ojEuSyFSYIuOfKciTGTg37GZ4lvC_AKfV0_00nU4GU8uxFwOpgefPTE/exec';
   const AUTO_RETRY_DELAY_MS = 4000;
   const MAX_AUTO_RETRIES = 20;
+  const CONTRACT_VERSION = '2026.09.18-r12-forms-contract';
 
   window.CATS_PERSISTENCE_VERIFY_URL = ENDPOINT;
-  window.__CATS_PERSISTENCE_CONFIG_VERSION__ = '2026.09.18-r11-email-hotfix';
+  window.__CATS_PERSISTENCE_CONFIG_VERSION__ = CONTRACT_VERSION;
 
   // Neutraliza clock skew do dispositivo: a identidade é conferida por
   // fingerprint + IDs oficiais; o relógio local não exclui linhas válidas.
@@ -42,7 +43,35 @@
   // verificando automaticamente, sem exigir clique do participante.
   window.__CATS_PERSISTENCE_VERIFY_TIMEOUT__ = 20000;
 
+  // Compatibilidade com o contrato literal do Google Forms.
+  // O Google Forms valida alternativas de itens fechados pelo valor exato.
+  // A interface havia renomeado a primeira opção de experiência para
+  // "Nunca participei.", enquanto a opção oficial é "Nunca atendi.".
+  // Corrige apenas o valor/legenda desse item, sem alterar respostas clínicas.
+  function patchGoogleFormsContract(frame) {
+    let doc;
+    try {
+      doc = frame.contentDocument;
+    } catch (_) {
+      return;
+    }
+    if (!doc) return;
+
+    const ocorrencia = doc.getElementById('ocorrencia');
+    if (ocorrencia && ocorrencia.name === 'entry.500885681') {
+      const stale = [...ocorrencia.options].find(option => option.value === 'Nunca participei.');
+      if (stale) {
+        stale.value = 'Nunca atendi.';
+        stale.textContent = 'Nunca atendi.';
+      }
+    }
+
+    doc.documentElement.dataset.catsFormsContract = CONTRACT_VERSION;
+  }
+
   function attachAutomaticRetry(frame) {
+    patchGoogleFormsContract(frame);
+
     let doc;
     try {
       doc = frame.contentDocument;
