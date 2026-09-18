@@ -90,6 +90,7 @@ with sync_playwright() as p:
     assert page.locator('meta[name="twitter:card"][content="summary_large_image"]').count() == 1
     assert page.locator('link[rel="icon"]').count() == 1
     assert frame.evaluate("sessionStorage.getItem('cats_pa_auth_v1')") is not None
+    assert page.evaluate("window.__CATS_PERSISTENCE_CONFIG_VERSION__") == "2026.09.18-r9-auto"
 
     # ------------------------------------------------------------------
     # 3) Pinpoint de identidade e resíduos.
@@ -178,9 +179,9 @@ with sync_playwright() as p:
     assert frame.locator("#submitBtn").evaluate("el => el.getBoundingClientRect().height >= 44")
 
     # ------------------------------------------------------------------
-    # 10) Gate de persistência: HTTP 200 do formResponse NÃO é sucesso.
-    # O sucesso só é liberado por confirmação independente da planilha
-    # oficial, com IDs e fingerprint exatos.
+    # 10) Gate de persistência automático.
+    # HTTP 200 do formResponse NÃO é sucesso. Após um falso negativo inicial,
+    # o próprio cliente deve verificar novamente e concluir sem clique humano.
     # ------------------------------------------------------------------
     page.evaluate(
         """() => {
@@ -202,19 +203,18 @@ with sync_playwright() as p:
     frame.locator("#submitBtn").click()
     frame.locator("#catsPersistenceStatus").wait_for(state="visible", timeout=10000)
     frame.wait_for_function(
-        "document.getElementById('catsPersistenceStatus').textContent.includes('NÃO foi confirmada')",
+        "document.getElementById('catsPersistenceStatus').textContent.includes('Confirmando automaticamente')",
         timeout=10000,
     )
     assert submitted["seen"]
     assert frame.locator("#success").is_hidden()
     assert form.is_visible()
     assert frame.locator("#submitBtn").is_disabled()
-    assert frame.locator("#catsVerifyAgain").is_visible()
+    assert frame.locator("#catsVerifyAgain").is_hidden()
 
-    # Agora o verificador devolve confirmação da planilha correta.
+    # A planilha passa a confirmar; a próxima verificação deve ocorrer sozinha.
     page.evaluate("window.__catsVerifierMode = 'positive'")
-    frame.locator("#catsVerifyAgain").click()
-    frame.locator("#success").wait_for(state="visible", timeout=10000)
+    frame.locator("#success").wait_for(state="visible", timeout=15000)
     assert "Preenchimento confirmado" in frame.locator("#success").inner_text()
     assert "planilha oficial" in frame.locator("#success").inner_text()
     assert form.is_hidden()
@@ -234,4 +234,4 @@ with sync_playwright() as p:
 
     browser.close()
 
-print("PASS: Smoke + E2E CATS — POST isolado não conclui; sucesso exige persistência confirmada na planilha oficial.")
+print("PASS: Smoke + E2E CATS — envio e confirmação automáticos; POST isolado nunca gera falso sucesso.")
