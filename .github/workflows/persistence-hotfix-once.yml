@@ -43,11 +43,13 @@ jobs:
       - name: Smoke + E2E do gate de persistência
         run: python scripts/e2e_precurso.py http://127.0.0.1:8765/
 
-      - name: Commit do hotfix validado
+      - name: Preparar commit do hotfix validado
         run: |
           git config user.name 'CATS Hotfix Bot'
           git config user.email 'actions@users.noreply.github.com'
           git add precurso.html persistence-config.js scripts/e2e_precurso.py scripts/apply_persistence_hotfix.py .github/workflows/precurso-smoke-e2e.yml docs/precurso-persistence-spec.md apps-script/CATS_PersistenceVerifier.gs
           git status --short
           git commit -m 'Hotfix: só confirma pré-curso após persistência na planilha'
-          git push origin HEAD:main
+
+      - name: Publicar hotfix validado
+        run: git push origin HEAD:main
