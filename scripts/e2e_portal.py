@@ -89,7 +89,7 @@ with sync_playwright() as p:
     assert first_desktop.locator(".content").is_visible()
     assert first_desktop.locator(".lesson-toggle").is_hidden()
 
-    # Onboarding: valida conteúdo e fechamento real pelo CTA.
+    # Onboarding: clique real, fechamento e persistência entre recargas.
     welcome = browser.new_context(viewport={"width": 390, "height": 844})
     install_session(welcome, onboarded=False)
     w = welcome.new_page()
@@ -100,8 +100,13 @@ with sync_playwright() as p:
     assert "avaliação" not in w.locator("#onboard").inner_text().lower()
     text_align = w.locator(".onboard-welcome p").first.evaluate("el => getComputedStyle(el).textAlign")
     assert text_align == "justify", text_align
-    w.locator("#ob-next").click(force=True)
+    w.locator("#ob-next").click()
     w.locator("#onboard").wait_for(state="hidden", timeout=3000)
+    assert w.evaluate("localStorage.getItem('cats_pa_onboarded_v2')") == "1"
+    w.reload(wait_until="networkidle")
+    w.wait_for_selector("#onboard", state="attached", timeout=7000)
+    w.wait_for_timeout(1200)
+    assert w.locator("#onboard").is_hidden()
     welcome.close()
 
     # ------------------------------------------------------------------
@@ -170,11 +175,7 @@ with sync_playwright() as p:
     m.wait_for_selector("#aulas")
     m.wait_for_timeout(500)
     assert m.locator("#catsAuthGate").is_hidden()
-
-    # O portal atual pode exibir onboarding; feche-o quando presente para testar a UI subjacente.
-    if m.locator("#onboard").is_visible():
-        m.locator("#ob-next").click(force=True)
-        m.locator("#onboard").wait_for(state="hidden", timeout=3000)
+    assert m.locator("#onboard").is_hidden()
 
     width_ok = m.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2")
     assert width_ok, (m.evaluate("document.documentElement.scrollWidth"), m.evaluate("document.documentElement.clientWidth"))
@@ -230,4 +231,4 @@ with sync_playwright() as p:
     context.close()
     browser.close()
 
-print("PASS: Smoke + E2E VIII CATS — portal, autenticação, onboarding, integração do pré-curso e mobile-first; persistência profunda delegada ao E2E dedicado.")
+print("PASS: Smoke + E2E VIII CATS — portal, autenticação, onboarding persistente, integração do pré-curso e mobile-first; persistência profunda delegada ao E2E dedicado.")
