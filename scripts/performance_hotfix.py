@@ -15,6 +15,9 @@ def main() -> None:
     )
     s = s.replace('ric-analytics.js?v=1.0.0', 'ric-analytics.js?v=1.1.2')
 
+    # Cache-bust explícito da camada que serializa onboarding e consentimento.
+    s = s.replace('portal-ui.js?v=20260905-1', 'portal-ui.js?v=20260918-r18')
+
     # Fontes/ícones externos não devem bloquear a primeira pintura.
     google = '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />'
     google_async = '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media=\'all\'" />\n  <noscript>' + google + '</noscript>'
