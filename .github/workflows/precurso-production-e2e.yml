@@ -1,0 +1,150 @@
+name: CATS Pré-curso — E2E real de produção
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/precurso-production-e2e.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  production-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Instalar Playwright
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
+
+      - name: E2E real — página pública → Google Forms → verificador → sucesso
+        env:
+          TARGET_URL: https://ricmurtapsicologia.github.io/CATS.pousoalegre/precurso.html
+        run: |
+          python - <<'PY'
+          import os, time
+          from playwright.sync_api import sync_playwright
+
+          target = os.environ['TARGET_URL']
+          run_id = os.environ.get('GITHUB_RUN_ID', str(int(time.time())))
+          marker = f'CATS-E2E-PROD-{run_id}-{int(time.time())}'
+          test_email = f'cats.e2e.{run_id}@example.invalid'
+
+          with sync_playwright() as p:
+              browser = p.chromium.launch(headless=True)
+              context = browser.new_context(viewport={'width': 390, 'height': 844})
+              page = context.new_page()
+              form_posts = []
+
+              def on_request(req):
+                  if req.method == 'POST' and req.url.endswith('/formResponse'):
+                      form_posts.append({'url': req.url, 'method': req.method})
+
+              page.on('request', on_request)
+              page.goto(target, wait_until='networkidle', timeout=60000)
+              page.wait_for_selector('#app.ready', timeout=20000)
+
+              payload = {
+                  'authenticated': True,
+                  'createdAt': int(time.time() * 1000),
+                  'expiresAt': int(time.time() * 1000) + 8 * 60 * 60 * 1000,
+                  'version': 3,
+              }
+              page.evaluate("""payload => {
+                sessionStorage.setItem('cats_pa_auth_v1', JSON.stringify(payload));
+                const gate = document.getElementById('catsAuthGate');
+                if (gate) gate.hidden = true;
+                document.documentElement.classList.remove('cats-auth-locked');
+                window.dispatchEvent(new CustomEvent('cats:authenticated', {detail:{source:'production-e2e'}}));
+              }""", payload)
+
+              iframe_handle = page.locator('#app').element_handle()
+              assert iframe_handle is not None
+              frame = iframe_handle.content_frame()
+              assert frame is not None
+              frame.locator('#catsForm').wait_for(state='visible', timeout=15000)
+
+              # Etapa 1 — somente dados sintéticos, mas com CPF matematicamente válido.
+              frame.locator('#nome').fill(marker)
+              frame.locator('#posto').select_option(label='Cap')
+              frame.locator('#tempo').select_option(index=1)
+              frame.locator('#email').fill(test_email)
+              frame.locator('#instituicao').fill('CBMMG TESTE E2E')
+              frame.locator('#unidade').fill('UNIDADE TESTE AUTOMATIZADO')
+              frame.locator('#registro').fill('0000000')
+              frame.locator('#cpf').fill('11144477735')
+              frame.locator('#sangue').fill('O+')
+              frame.locator('input[name="entry.192985690"][value="Não."]').check(force=True)
+              if not frame.locator('#data').input_value():
+                  frame.locator('#data').fill('2026-09-18')
+              frame.locator('[data-step="1"] [data-next]').click()
+              frame.locator('[data-step="2"].active').wait_for(timeout=10000)
+
+              # Etapa 2 — exercita exatamente a opção que motivou o hotfix r12.
+              frame.locator('#motivo').fill(f'Teste E2E real de produção — {marker}')
+              frame.locator('#ocorrencia').select_option(label='Nunca atendi.')
+              frame.locator('#presenciou').select_option(index=1)
+              frame.locator('[data-step="2"] [data-next]').click()
+              frame.locator('[data-step="3"].active').wait_for(timeout=10000)
+
+              # Etapa 3 — 21 grupos clínicos sintéticos, primeira alternativa de cada grupo.
+              names = frame.locator('.clinical-item input[type="radio"]').evaluate_all(
+                  "els => [...new Set(els.map(e => e.name))]"
+              )
+              assert len(names) == 21, names
+              for name in names:
+                  frame.locator(f'input[name="{name}"]').first.check(force=True)
+              assert frame.locator('[required]:invalid').count() == 0
+
+              frame.locator('#submitBtn').click()
+              frame.locator('#catsPersistenceStatus').wait_for(state='visible', timeout=15000)
+
+              # O único sucesso aceito é o que o próprio app marca após confirmação na planilha oficial.
+              frame.locator('#success[data-persistence-confirmed="true"]').wait_for(state='visible', timeout=150000)
+              success_text = frame.locator('#success').inner_text()
+              assert 'Preenchimento confirmado' in success_text, success_text
+              assert 'planilha oficial' in success_text, success_text
+              assert form_posts, 'Nenhum POST real para /formResponse foi observado.'
+
+              print(f'PROD_E2E_MARKER={marker}')
+              print(f'PROD_E2E_EMAIL={test_email}')
+              print(f'FORM_POST_COUNT={len(form_posts)}')
+              print('PROD_E2E_RESULT=PASS')
+              context.close()
+              browser.close()
+          PY
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Lighthouse — precurso.html em produção
+        env:
+          TARGET_URL: https://ricmurtapsicologia.github.io/CATS.pousoalegre/precurso.html
+        run: |
+          npm install --global lighthouse@12.8.2
+          lighthouse "$TARGET_URL" \
+            --chrome-flags='--headless --no-sandbox --disable-gpu' \
+            --only-categories=performance,accessibility,best-practices,seo \
+            --output=json --output-path=lighthouse-precurso-production.json --quiet
+          node <<'NODE'
+          const fs=require('fs');
+          const r=JSON.parse(fs.readFileSync('lighthouse-precurso-production.json','utf8'));
+          console.log('LIGHTHOUSE_PRODUCTION_SCORES');
+          for (const [k,v] of Object.entries(r.categories)) {
+            console.log(`${k}=${Math.round(v.score*100)}`);
+          }
+          NODE
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: precurso-production-e2e-lighthouse
+          path: lighthouse-precurso-production.json
+          retention-days: 7
