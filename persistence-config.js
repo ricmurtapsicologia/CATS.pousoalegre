@@ -39,15 +39,11 @@
     }
   };
 
-  // A verificação inicial é curta; se houver atraso, o próprio cliente continua
-  // verificando automaticamente, sem exigir clique do participante.
   window.__CATS_PERSISTENCE_VERIFY_TIMEOUT__ = 20000;
 
-  // Compatibilidade com o contrato literal do Google Forms.
-  // O Google Forms valida alternativas de itens fechados pelo valor exato.
-  // A interface havia renomeado a primeira opção de experiência para
-  // "Nunca participei.", enquanto a opção oficial é "Nunca atendi.".
-  // Corrige apenas o valor/legenda desse item, sem alterar respostas clínicas.
+  // Compatibilidade estrita com os literais do Google Forms.
+  // O Forms valida alternativas fechadas pelo valor exato, inclusive pontuação
+  // e espaços internos. Os ajustes abaixo não alteram o texto visual percebido.
   function patchGoogleFormsContract(frame) {
     let doc;
     try {
@@ -65,6 +61,12 @@
         stale.textContent = 'Nunca atendi.';
       }
     }
+
+    doc.querySelectorAll('input[name="entry.2109138769"]').forEach(input => {
+      if (input.value === 'Não me sinto um (a) fracassado (a).') {
+        input.value = 'Não me sinto um (a)  fracassado (a).';
+      }
+    });
 
     doc.documentElement.dataset.catsFormsContract = CONTRACT_VERSION;
   }
