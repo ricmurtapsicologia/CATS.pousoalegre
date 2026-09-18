@@ -30,13 +30,13 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Contrato do backend — persistência e e-mail idempotente
+      - name: Contrato do backend — persistência, e-mail e BDI-II privado
         run: |
           python - <<'PY'
           from pathlib import Path
           src = Path('apps-script/CATS_PersistenceVerifier.gs').read_text(encoding='utf-8')
           required = [
-              "runtimeVersion: '2026.09.18-r3-email-idempotent'",
+              "runtimeVersion: '2026.09.18-r4-bdi-email-private'",
               "payload.notifyEmail === true",
               "notifyPersistedResponse_(sheet, absoluteRow, 'verification')",
               "notifyPersistedResponse_(sheet, row, 'sheet-trigger')",
@@ -44,11 +44,24 @@ jobs:
               'PropertiesService.getScriptProperties()',
               "return 'already-sent'",
               'MailApp.sendEmail',
+              'computeBdiIi_(headers, values)',
+              "'alteracoes no padrao de sono': Object.freeze([0, 1, 1, 2, 2, 3, 3])",
+              "'alteracoes de apetite': Object.freeze([0, 1, 1, 2, 2, 3, 3])",
+              "if (score <= 13)",
+              "if (score <= 19)",
+              "if (score <= 28)",
+              "RESULTADO BDI-II — USO RESTRITO À COORDENAÇÃO",
+              "Este resultado não é exibido ao respondente.",
           ]
           missing = [item for item in required if item not in src]
           assert not missing, f'Contrato de backend incompleto: {missing}'
           assert 'if (lowerBound && ts && ts < lowerBound) break;' not in src, 'Regressão de clock skew detectada'
-          print('PASS: backend com dupla rota idempotente e sem corte por relógio local.')
+
+          # O JSON devolvido ao navegador não pode transportar score/classificação.
+          returned = src[src.index("return {", src.index("if (fingerprint === expectedFingerprint)")):src.index("};", src.index("return {", src.index("if (fingerprint === expectedFingerprint)"))) + 2]
+          for forbidden in ('bdi', 'score', 'label', 'range', 'clinical'):
+              assert forbidden.lower() not in returned.lower(), f'BDI-II vazando no retorno ao navegador: {forbidden}'
+          print('PASS: backend r4 com BDI-II somente no e-mail e sem vazamento ao navegador.')
           PY
 
       - name: Instalar Playwright
@@ -114,6 +127,7 @@ jobs:
               assert negative['formEditId'] == FORM_ID, negative
               assert negative['sheetId'] == SHEET_ID, negative
               assert negative['fingerprint'] == NEGATIVE_FINGERPRINT, negative
+              assert not any(k.lower().startswith('bdi') or k.lower() in {'score','label','range','clinical'} for k in negative), negative
 
               positive = page.evaluate(JS, {
                   'formId': FORM_ID,
@@ -127,9 +141,10 @@ jobs:
               assert positive['formEditId'] == FORM_ID, positive
               assert positive['sheetId'] == SHEET_ID, positive
               assert positive['fingerprint'] == POSITIVE_FIXTURE_FINGERPRINT, positive
+              assert not any(k.lower().startswith('bdi') or k.lower() in {'score','label','range','clinical'} for k in positive), positive
               browser.close()
 
-          print('PASS: hotfix neutraliza clock skew, confirma fixture existente e rejeita fingerprint inexistente.')
+          print('PASS: hotfix neutraliza clock skew, confirma fixture existente e não expõe BDI-II.')
           PY
 
       - name: Smoke + E2E do formulário
