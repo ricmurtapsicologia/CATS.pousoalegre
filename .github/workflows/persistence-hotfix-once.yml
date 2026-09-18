@@ -5,6 +5,19 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/persistence-hotfix-once.yml'
+      - 'precurso.html'
+      - 'legacy.html'
+      - 'persistence-config.js'
+      - 'apps-script/CATS_PersistenceVerifier.gs'
+      - 'scripts/precurso_submission_hardening.py'
+      - 'scripts/qa_30_30.py'
+      - 'scripts/qa_90_90.py'
+      - 'scripts/qa_6_6_precurso.py'
+      - 'scripts/qep_precurso_gate.py'
+      - 'scripts/e2e_precurso.py'
+      - 'docs/PRECURSO_E2E_FINAL_SPEC.md'
+      - 'docs/PRECURSO_PERSISTENCE_HOTFIX_SPEC.md'
+      - 'docs/precurso-persistence-spec.md'
   workflow_dispatch: {}
 
 permissions:
@@ -32,6 +45,9 @@ jobs:
           test -s docs/PRECURSO_E2E_FINAL_SPEC.md
           grep -q 'formResponse' precurso.html
           grep -q '1wQ0nc6TmCqqbu-ZqloIRLptO6iHqDhD00qrFLxP-fUk' precurso.html
+          grep -q "notifyPersistedResponse_(sheet, absoluteRow, 'verification')" apps-script/CATS_PersistenceVerifier.gs
+          grep -q 'PropertiesService.getScriptProperties()' apps-script/CATS_PersistenceVerifier.gs
+          ! grep -q 'if (lowerBound && ts && ts < lowerBound) break;' apps-script/CATS_PersistenceVerifier.gs
 
       - name: Hotfix — persistência segura e automática
         run: python scripts/precurso_submission_hardening.py
@@ -71,6 +87,6 @@ jobs:
           if git diff --cached --quiet; then
             echo 'Release já materializada; nenhuma alteração necessária.'
           else
-            git commit -m 'Release: pré-curso r10 com persistência auditada'
+            git commit -m 'Release: pré-curso r11 com persistência auditada'
             git push origin HEAD:main
           fi
