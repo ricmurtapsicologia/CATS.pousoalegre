@@ -10,9 +10,11 @@ on:
       - 'persistence-config.js'
       - 'cats-auth.js'
       - 'cats-auth.css'
+      - 'apps-script/CATS_PersistenceVerifier.gs'
       - 'scripts/e2e_precurso.py'
       - 'docs/precurso-persistence-spec.md'
       - 'docs/PRECURSO_PERSISTENCE_HOTFIX_SPEC.md'
+      - 'docs/PRECURSO_E2E_FINAL_SPEC.md'
   workflow_dispatch: {}
 
 permissions:
@@ -27,6 +29,27 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
+
+      - name: Contrato do backend — persistência e e-mail idempotente
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          src = Path('apps-script/CATS_PersistenceVerifier.gs').read_text(encoding='utf-8')
+          required = [
+              "runtimeVersion: '2026.09.18-r3-email-idempotent'",
+              "payload.notifyEmail === true",
+              "notifyPersistedResponse_(sheet, absoluteRow, 'verification')",
+              "notifyPersistedResponse_(sheet, row, 'sheet-trigger')",
+              'LockService.getScriptLock()',
+              'PropertiesService.getScriptProperties()',
+              "return 'already-sent'",
+              'MailApp.sendEmail',
+          ]
+          missing = [item for item in required if item not in src]
+          assert not missing, f'Contrato de backend incompleto: {missing}'
+          assert 'if (lowerBound && ts && ts < lowerBound) break;' not in src, 'Regressão de clock skew detectada'
+          print('PASS: backend com dupla rota idempotente e sem corte por relógio local.')
+          PY
 
       - name: Instalar Playwright
         run: |
