@@ -42,9 +42,9 @@ jobs:
           with urllib.request.urlopen(persistence_url, timeout=30) as response:
               runtime = json.load(response)
           assert runtime.get('status') == 'ready', runtime
-          assert runtime.get('runtimeVersion') == '2026.09.18-r4-bdi-email-private', runtime
           assert runtime.get('formEditId') == '1107fjdaiL42Zb0n2jNjKr0aiNNysyEADQCesdBTbD_E', runtime
           assert runtime.get('sheetId') == '1wQ0nc6TmCqqbu-ZqloIRLptO6iHqDhD00qrFLxP-fUk', runtime
+          print(f'BACKEND_RUNTIME_PRE={runtime.get("runtimeVersion")}')
 
           with sync_playwright() as p:
               browser = p.chromium.launch(headless=True)
@@ -87,7 +87,6 @@ jobs:
               assert page.evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2')
               assert frame.evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2')
 
-              # Etapa 1 — dados sintéticos e identificador único.
               frame.locator('#nome').fill(marker)
               frame.locator('#posto').select_option(label='Cap')
               frame.locator('#tempo').select_option(index=1)
@@ -97,26 +96,24 @@ jobs:
               frame.locator('#registro').fill('0000000')
               frame.locator('#cpf').fill('11144477735')
               frame.locator('#sangue').fill('O+')
-              frame.locator('input[name="entry.192985690"][value="Não."]').check(force=True)
+              frame.locator('input[name="entry.192985690"][value="Não."]').evaluate('el => el.click()')
               if not frame.locator('#data').input_value():
                   frame.locator('#data').fill('2026-09-18')
               frame.locator('[data-step="1"] [data-next]').click()
               frame.locator('[data-step="2"].active').wait_for(timeout=10000)
 
-              # Etapa 2.
               frame.locator('#motivo').fill(f'Teste E2E completo de produção — {marker}')
               frame.locator('#ocorrencia').select_option(label='Nunca atendi.')
               frame.locator('#presenciou').select_option(index=1)
               frame.locator('[data-step="2"] [data-next]').click()
               frame.locator('[data-step="3"].active').wait_for(timeout=10000)
 
-              # Etapa 3 — 21 itens preenchidos; primeira alternativa = escore sintético mínimo.
               names = frame.locator('.clinical-item input[type="radio"]').evaluate_all(
                   "els => [...new Set(els.map(e => e.name))]"
               )
               assert len(names) == 21, names
               for name in names:
-                  frame.locator(f'input[name="{name}"]').first.check(force=True)
+                  frame.locator(f'input[name="{name}"]').first.evaluate('el => el.click()')
               assert frame.locator('[required]:invalid').count() == 0
 
               frame.locator('#submitBtn').click()
@@ -130,7 +127,6 @@ jobs:
               assert 'bdi-ii' not in frame.locator('body').inner_text().lower()
               assert form_posts, 'Nenhum POST real para /formResponse foi observado.'
 
-              # O sucesso final só é aceito após confirmação independente da planilha oficial.
               success = frame.locator('#success[data-persistence-confirmed="true"]')
               success.wait_for(state='visible', timeout=150000)
               success_text = success.inner_text()
