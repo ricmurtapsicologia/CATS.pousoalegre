@@ -21,7 +21,8 @@ NEW_LEGACY = '''  $('#google-response').addEventListener('load', () => {
 BUILD_OLD = '2026.09.18-r9-auto'
 BUILD_NEW = '2026.09.18-r10-persist'
 AUTH_JS_OLD = 'cats-auth.js?v=20260909-2'
-AUTH_JS_NEW = 'cats-auth.js?v=20260918-submit-feedback-r1'
+AUTH_JS_TRANSIENT = 'cats-auth.js?v=20260918-submit-feedback-r1'
+AUTH_JS_NEW = 'cats-auth.js?v=20260909-2&build=20260918-submit-feedback-r1'
 
 
 def patch_once(text: str, old: str, new: str, label: str) -> str:
@@ -40,7 +41,11 @@ pre = PRECURSO.read_text(encoding='utf-8')
 pre = pre.replace(f'<meta name="cats-build" content="{BUILD_OLD}">', f'<meta name="cats-build" content="{BUILD_NEW}">')
 pre = pre.replace(f'src="legacy.html?v={BUILD_OLD}"', f'src="legacy.html?v={BUILD_NEW}"')
 pre = pre.replace(f"const BUILD='{BUILD_OLD}';", f"const BUILD='{BUILD_NEW}';")
-pre = pre.replace(AUTH_JS_OLD, AUTH_JS_NEW)
+if AUTH_JS_NEW not in pre:
+    if AUTH_JS_TRANSIENT in pre:
+        pre = pre.replace(AUTH_JS_TRANSIENT, AUTH_JS_NEW, 1)
+    else:
+        pre = patch_once(pre, AUTH_JS_OLD, AUTH_JS_NEW, 'cats-auth cache bust')
 
 payload_old = '''      sheetId:RESPONSE_SHEET_ID,
       submittedAtEpochMs,
