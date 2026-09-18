@@ -51,8 +51,11 @@ gate(
     and 'autocomplete="off"' in legacy
     and "credentials: 'omit'" in persist
     and sensitive_local is None
-    and 'Não retorna PII nem respostas clínicas' in verifier,
-    'Sem cache local de respostas sensíveis; verifier não devolve PII.'
+    and 'Não retorna PII' in verifier
+    and 'respostas clínicas' in verifier
+    and 'assert "bdi-ii" not in participant_text' in e2e
+    and 'assert "bdi-ii" not in final_participant_text' in e2e,
+    'Sem cache local de respostas sensíveis; verifier não devolve PII/BDI-II; navegador não exibe resultado.'
 )
 
 # 4 — UX, acessibilidade e responsividade.
@@ -63,8 +66,10 @@ gate(
     and 'prefers-reduced-motion' in pre
     and '@media(max-width:420px)' in pre
     and 'scrollWidth <= document.documentElement.clientWidth + 2' in e2e
-    and 'getBoundingClientRect().height >= 44' in e2e,
-    'Idioma, live region, reduced motion, mobile e alvo de toque cobertos.'
+    and 'getBoundingClientRect().height >= 44' in e2e
+    and 'Envio realizado' in e2e
+    and 'Parabéns! Sua participação foi registrada com sucesso.' in e2e,
+    'Idioma, live region, reduced motion, mobile, alvo de toque e feedback pós-envio cobertos.'
 )
 
 # 5 — Robustez operacional e regressão.
@@ -74,9 +79,11 @@ gate(
     and 'AUTO_RETRY_DELAY_MS' in persist
     and 'network-error' in persist
     and "submittedAtEpochMs: 0" in persist
-    and 'POST isolado nunca gera falso sucesso' in e2e
+    and 'SHEET-ERRADA' in e2e
+    and 'data-persistence-confirmed' in e2e
+    and 'assert submitted["seen"]' in e2e
     and "$('#success').classList.add('show');\n    window.scrollTo" not in legacy,
-    'Retry automático, clock-skew neutralizado e falso positivo bloqueado.'
+    'Retry automático, clock-skew neutralizado, POST observado e falso positivo bloqueado.'
 )
 
 # 6 — Prontidão de entrega e canal de e-mail.
@@ -88,10 +95,12 @@ gate(
     and 'emailSubmittedResponse' in verifier
     and 'MailApp.sendEmail' in verifier
     and 'ricmurtapsicologia@gmail.com' in verifier
+    and 'computeBdiIi_(headers, values)' in verifier
+    and 'RESULTADO BDI-II — USO RESTRITO À COORDENAÇÃO' in verifier
     and 'precurso.html' in lighthouse
     and 'Lighthouse' in lighthouse
     and 'runtime de e-mail' in spec,
-    'E-mail implementado no backend-fonte; Lighthouse e distinção código/runtime documentados.'
+    'E-mail e BDI-II privado implementados no backend-fonte; ativação do runtime continua evidência externa.'
 )
 
 print('GATES_FINAIS_PRECURSO_6_6')
