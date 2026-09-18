@@ -2,20 +2,19 @@
   "use strict";
 
   /*
-   * CATS Pouso Alegre 2026 — restauração das apresentações originais.
-   * Fonte canônica dos decks: conjunto efetivamente utilizado pelo Maj BM Richelmy
-   * no CATS 2025 / 3º COB — Juiz de Fora (08–10/09/2025).
+   * CATS Pouso Alegre 2026 — apresentações canônicas vigentes.
+   * Fonte canônica dos decks: pasta 05 Aulas PPT teóricas / 2026.
    * Mantém os arquivos PPTX originais no Drive e evita o /presentation/embed,
    * que pode alterar a renderização de arquivos do PowerPoint.
    */
   const DECKS = Object.freeze({
     "1": {
       title: "Aspectos Gerais do Comportamento Suicida",
-      id: "1XbZNfO9M-yUR-Nvow2-u46TvCC15sR6T"
+      id: "1ZYiAFZwrDE2i2zRpMg714cBqC4R-2OeH"
     },
     "2": {
       title: "Psicopatologia do Comportamento Suicida",
-      id: "1eZhr-fsON3t8NDkG8Fji3_mXIzKnhiZj"
+      id: "19n4VMAyYdaCjbYYIH8eZB3duNC1FkSF7"
     },
     "3": {
       title: "Abordagem Técnica: Aspectos Gerais",
@@ -27,7 +26,7 @@
     },
     "8": {
       title: "Prevenção ao Comportamento Suicida",
-      id: "12PpmEAJo3aw_3sGfZRHHQKHKg57wAZvv"
+      id: "1lVMb2TMiex4Z48_y1S2GA_mnTTgogS6u"
     }
   });
 
