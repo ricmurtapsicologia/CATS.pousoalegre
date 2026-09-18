@@ -38,8 +38,8 @@ q(19, 'Interatividade documental', True, 'N/A; formulário web')
 q(20, 'Segurança e privacidade', 'noindex,nofollow,noarchive' in pre and 'autocomplete="off"' in legacy and 'credentials: \'omit\'' in persist, 'não indexação, CPF sem autocomplete, verifier sem credenciais')
 q(21, 'Metadados e SEO editorial', '<link rel="canonical"' in pre and 'og:title' in pre and 'twitter:card' in pre, 'metadados completos embora noindex')
 q(22, 'Robustez e QA técnico', 'e2e_precurso.py' in workflow and 'Smoke de produção' in workflow, 'E2E local + smoke de produção')
-q(23, 'Excelência editorial', 'Confirmação segura' in pre or 'Aguardando confirmação' in pre, 'estado operacional informado')
-q(24, 'Consistência cross-format', 'FORM_ACTION' in pre and 'FORM_ID' in verifier and 'sheetId' in verifier, 'IDs oficiais rastreáveis')
+q(23, 'Excelência editorial', 'confirm' in pre.lower() and 'planilha oficial' in pre.lower(), 'estado operacional e confirmação explícitos')
+q(24, 'Consistência cross-format', 'FORM_ACTION' in pre and 'formEditId' in verifier and 'sheetId' in verifier, 'IDs oficiais rastreáveis entre front-end e verificador')
 
 # Controles transversais críticos específicos desta superfície.
 critical = {
