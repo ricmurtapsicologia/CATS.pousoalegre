@@ -12,6 +12,7 @@ on:
       - 'cats-auth.css'
       - 'scripts/e2e_precurso.py'
       - 'docs/precurso-persistence-spec.md'
+      - 'docs/PRECURSO_PERSISTENCE_HOTFIX_SPEC.md'
   workflow_dispatch: {}
 
 permissions:
@@ -39,40 +40,27 @@ jobs:
           cat /tmp/cats-pre-http.log
           exit 1
 
-      - name: Smoke live do verificador — negativo e positivo
+      - name: Smoke live do verificador — negativo, positivo e clock skew
         run: |
           python - <<'PY'
           from playwright.sync_api import sync_playwright
-          import json
+          import time
 
           FORM_ID = '1107fjdaiL42Zb0n2jNjKr0aiNNysyEADQCesdBTbD_E'
           SHEET_ID = '1wQ0nc6TmCqqbu-ZqloIRLptO6iHqDhD00qrFLxP-fUk'
           NEGATIVE_FINGERPRINT = '0' * 64
-          # Hash de uma fixture sintética histórica já persistida na planilha.
+          # Hash de fixture sintética histórica já persistida na planilha.
           # Não contém PII em claro e não cria nova resposta.
           POSITIVE_FIXTURE_FINGERPRINT = 'a50d501a888c52b5d648b46073bbb783382f8ea8007b3052ebe2a19ee18ce7df'
 
-          JS = '''async ({endpoint, formId, sheetId, fingerprint, submittedAtEpochMs}) => {
-            try {
-              const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: {'Content-Type':'text/plain;charset=UTF-8'},
-                body: JSON.stringify({
-                  protocol: 'cats-persistence-v1',
-                  formEditId: formId,
-                  sheetId,
-                  submittedAtEpochMs,
-                  fingerprint
-                }),
-                cache: 'no-store',
-                credentials: 'omit',
-                redirect: 'follow'
-              });
-              const text = await response.text();
-              return {ok: response.ok, status: response.status, text};
-            } catch (error) {
-              return {ok:false, status:0, error:String(error)};
-            }
+          JS = '''async ({formId, sheetId, fingerprint, submittedAtEpochMs}) => {
+            return await window.__CATS_PERSISTENCE_VERIFY__({
+              protocol: 'cats-persistence-v1',
+              formEditId: formId,
+              sheetId,
+              submittedAtEpochMs,
+              fingerprint
+            });
           }'''
 
           with sync_playwright() as p:
@@ -81,44 +69,44 @@ jobs:
               page.goto('http://127.0.0.1:8765/precurso.html', wait_until='domcontentloaded')
               endpoint = page.evaluate('window.CATS_PERSISTENCE_VERIFY_URL')
               timeout = page.evaluate('Number(window.__CATS_PERSISTENCE_VERIFY_TIMEOUT__ || 0)')
+              wrapper = page.evaluate("typeof window.__CATS_PERSISTENCE_VERIFY__ === 'function'")
               assert endpoint.startswith('https://script.google.com/macros/s/') and endpoint.endswith('/exec'), endpoint
-              assert timeout >= 60000, f'Janela de consistência insuficiente: {timeout}ms'
+              assert wrapper, 'Wrapper do hotfix não instalado'
+              assert 10000 <= timeout <= 30000, f'Janela UX fora do spec: {timeout}ms'
+
+              # Simula notebook 10 minutos adiantado. O hotfix deve neutralizar esse
+              # relógio local antes de consultar o backend.
+              skewed_client_now = int(time.time() * 1000) + 10 * 60 * 1000
 
               negative = page.evaluate(JS, {
-                  'endpoint': endpoint,
                   'formId': FORM_ID,
                   'sheetId': SHEET_ID,
                   'fingerprint': NEGATIVE_FINGERPRINT,
-                  'submittedAtEpochMs': 0,
+                  'submittedAtEpochMs': skewed_client_now,
               })
-              assert negative.get('ok'), negative
-              neg = json.loads(negative['text'])
-              assert neg['protocol'] == 'cats-persistence-v1', neg
-              assert neg['persisted'] is False, neg
-              assert neg['terminal'] is False, neg
-              assert neg['reason'] == 'row-not-yet-visible', neg
-              assert neg['formEditId'] == FORM_ID, neg
-              assert neg['sheetId'] == SHEET_ID, neg
-              assert neg['fingerprint'] == NEGATIVE_FINGERPRINT, neg
+              assert negative['protocol'] == 'cats-persistence-v1', negative
+              assert negative['persisted'] is False, negative
+              assert negative['terminal'] is False, negative
+              assert negative['reason'] == 'row-not-yet-visible', negative
+              assert negative['formEditId'] == FORM_ID, negative
+              assert negative['sheetId'] == SHEET_ID, negative
+              assert negative['fingerprint'] == NEGATIVE_FINGERPRINT, negative
 
               positive = page.evaluate(JS, {
-                  'endpoint': endpoint,
                   'formId': FORM_ID,
                   'sheetId': SHEET_ID,
                   'fingerprint': POSITIVE_FIXTURE_FINGERPRINT,
-                  'submittedAtEpochMs': 0,
+                  'submittedAtEpochMs': skewed_client_now,
               })
-              assert positive.get('ok'), positive
-              pos = json.loads(positive['text'])
-              assert pos['protocol'] == 'cats-persistence-v1', pos
-              assert pos['persisted'] is True, pos
-              assert pos['terminal'] is True, pos
-              assert pos['formEditId'] == FORM_ID, pos
-              assert pos['sheetId'] == SHEET_ID, pos
-              assert pos['fingerprint'] == POSITIVE_FIXTURE_FINGERPRINT, pos
+              assert positive['protocol'] == 'cats-persistence-v1', positive
+              assert positive['persisted'] is True, positive
+              assert positive['terminal'] is True, positive
+              assert positive['formEditId'] == FORM_ID, positive
+              assert positive['sheetId'] == SHEET_ID, positive
+              assert positive['fingerprint'] == POSITIVE_FIXTURE_FINGERPRINT, positive
               browser.close()
 
-          print('PASS: verificador live prova ausência e presença reais na planilha oficial; janela de consistência >= 60s.')
+          print('PASS: hotfix neutraliza clock skew, confirma fixture existente e rejeita fingerprint inexistente.')
           PY
 
       - name: Smoke + E2E do formulário
