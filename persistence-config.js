@@ -6,7 +6,7 @@
   const ENDPOINT = 'https://script.google.com/macros/s/AKfycbzOINm3ehG2ojEuSyFSYIuOfKciTGTg37GZ4lvC_AKfV0_00nU4GU8uxFwOpgefPTE/exec';
   const AUTO_RETRY_DELAY_MS = 4000;
   const MAX_AUTO_RETRIES = 20;
-  const CONTRACT_VERSION = '2026.09.18-r13-fingerprint-iso';
+  const CONTRACT_VERSION = '2026.09.18-r14-fingerprint-propagated';
 
   window.CATS_PERSISTENCE_VERIFY_URL = ENDPOINT;
   window.__CATS_PERSISTENCE_CONFIG_VERSION__ = CONTRACT_VERSION;
@@ -32,7 +32,6 @@
 
   // Recalcula o fingerprint usando exatamente o mesmo contrato canônico do
   // backend/planilha: nome | melhor e-mail | CPF numérico | data ISO yyyy-mm-dd.
-  // Isso elimina a divergência anterior DD/MM/AAAA x AAAA-MM-DD.
   async function fingerprintFromLiveForm() {
     try {
       const frame = document.getElementById('app');
@@ -52,14 +51,20 @@
     }
   }
 
-  // Neutraliza clock skew do dispositivo: a identidade é conferida por
-  // fingerprint + IDs oficiais; o relógio local não exclui linhas válidas.
+  // O verificador injetado precisa manter UM ÚNICO fingerprint de ponta a ponta.
+  // O código-base da página compara result.fingerprint com payload.fingerprint
+  // após a chamada. Portanto, além de enviar o fingerprint ISO ao backend,
+  // propagamos o mesmo valor ao objeto payload recebido do chamador.
   window.__CATS_PERSISTENCE_VERIFY__ = async payload => {
     const liveFingerprint = await fingerprintFromLiveForm();
+    if (liveFingerprint) {
+      payload.fingerprint = liveFingerprint;
+      window.__CATS_PERSISTENCE_LAST_FINGERPRINT__ = liveFingerprint;
+    }
+
     const requestPayload = {
       ...payload,
       submittedAtEpochMs: 0,
-      fingerprint: liveFingerprint || payload.fingerprint,
     };
 
     try {
@@ -75,11 +80,7 @@
       if (!response.ok) {
         return {persisted: false, terminal: false, reason: `http-${response.status}`};
       }
-      const result = await response.json();
-      if (result?.persisted === true && liveFingerprint) {
-        result.fingerprint = liveFingerprint;
-      }
-      return result;
+      return await response.json();
     } catch (error) {
       console.warn('[CATS persistence] verifier request failed', error);
       return {persisted: false, terminal: false, reason: 'network-error'};
