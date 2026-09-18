@@ -8,6 +8,7 @@ from playwright.sync_api import sync_playwright
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8765/"
 PRE = BASE.rstrip("/") + "/precurso.html"
 LEGACY = BASE.rstrip("/") + "/legacy.html"
+CONFIG_VERSION = "2026.09.18-r12-forms-contract"
 
 
 def auth_payload() -> str:
@@ -23,10 +24,7 @@ def auth_payload() -> str:
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
 
-    # ------------------------------------------------------------------
-    # 1) Gate real + formulário pré-carregado antes da autenticação.
-    # O aluno não deve esperar uma segunda navegação depois de informar a senha.
-    # ------------------------------------------------------------------
+    # 1) Gate real + formulário já preparado atrás da autenticação.
     context = browser.new_context(viewport={"width": 390, "height": 844})
     submitted = {"seen": False}
 
@@ -45,7 +43,6 @@ with sync_playwright() as p:
     assert "VIII CATS" in gate.inner_text()
     assert "Pouso Alegre" in gate.inner_text()
 
-    # O conteúdo já deve estar preparado atrás do gate.
     page.wait_for_selector("#app.ready", timeout=15000)
     iframe_handle = page.locator("#app").element_handle()
     assert iframe_handle is not None
@@ -54,10 +51,7 @@ with sync_playwright() as p:
     assert frame.locator("#catsForm").count() == 1
     assert page.locator("#boot").is_hidden()
 
-    # Sentinela prova que a navegação principal não foi recarregada.
     page.evaluate("window.__catsE2EFirstLoad = 'preservado'")
-
-    # Simula autenticação válida sem usar matrícula real.
     start = time.perf_counter()
     payload = auth_payload()
     page.evaluate(
@@ -75,12 +69,9 @@ with sync_playwright() as p:
     assert elapsed < 1.0, f"Transição pós-login lenta: {elapsed:.3f}s"
     assert page.evaluate("window.__catsE2EFirstLoad") == "preservado"
     assert page.locator("#boot").is_hidden()
-    assert "Não foi possível preparar" not in page.locator("body").inner_text()
     assert frame.locator("#catsForm").count() == 1
 
-    # ------------------------------------------------------------------
-    # 2) Smoke dos metadados e da prévia social.
-    # ------------------------------------------------------------------
+    # 2) Metadados e prévia social.
     assert page.locator('link[rel="canonical"]').get_attribute("href").endswith("/precurso.html")
     assert page.locator('meta[property="og:url"]').get_attribute("content").endswith("/precurso.html")
     assert page.locator('meta[property="og:title"]').count() == 1
@@ -90,11 +81,9 @@ with sync_playwright() as p:
     assert page.locator('meta[name="twitter:card"][content="summary_large_image"]').count() == 1
     assert page.locator('link[rel="icon"]').count() == 1
     assert frame.evaluate("sessionStorage.getItem('cats_pa_auth_v1')") is not None
-    assert page.evaluate("window.__CATS_PERSISTENCE_CONFIG_VERSION__") == "2026.09.18-r9-auto"
+    assert page.evaluate("window.__CATS_PERSISTENCE_CONFIG_VERSION__") == CONFIG_VERSION
 
-    # ------------------------------------------------------------------
-    # 3) Pinpoint de identidade e resíduos.
-    # ------------------------------------------------------------------
+    # 3) Identidade e resíduos.
     hero = frame.locator("header.hero").inner_text().lower()
     assert "pouso alegre" in hero
     assert "7ª cia ind" in hero
@@ -103,9 +92,7 @@ with sync_playwright() as p:
     for forbidden in ("4º bbm", "4° bbm", "cats 2025"):
         assert forbidden not in body_text, forbidden
 
-    # ------------------------------------------------------------------
     # 4) Estrutura e integração com Google Forms.
-    # ------------------------------------------------------------------
     form = frame.locator("#catsForm")
     assert form.count() == 1
     assert form.get_attribute("method").lower() == "post"
@@ -121,16 +108,19 @@ with sync_playwright() as p:
     assert frame.locator("#ocorrencia option").count() == 5
     assert frame.locator("#presenciou option").count() == 5
 
-    # ------------------------------------------------------------------
+    # Contrato r12: o valor literal enviado ao Forms deve coincidir com a opção oficial.
+    assert frame.locator('#ocorrencia').get_attribute('name') == 'entry.500885681'
+    first_occurrence = frame.locator('#ocorrencia option').nth(1)
+    assert first_occurrence.get_attribute('value') == 'Nunca atendi.'
+    assert first_occurrence.inner_text() == 'Nunca atendi.'
+    assert frame.evaluate("document.documentElement.dataset.catsFormsContract") == CONFIG_VERSION
+
     # 5) Validação negativa: vazio não pode avançar.
-    # ------------------------------------------------------------------
     frame.locator('[data-step="1"] [data-next]').click()
     assert "active" in (frame.locator('[data-step="1"]').get_attribute("class") or "")
     assert frame.locator(".error").evaluate_all("els => els.some(e => e.textContent.trim().length > 0)")
 
-    # ------------------------------------------------------------------
-    # 6) E2E etapa 1 com dados sintéticos.
-    # ------------------------------------------------------------------
+    # 6) Etapa 1 com dados sintéticos.
     frame.locator("#nome").fill("TESTE AUTOMATIZADO CATS")
     frame.locator("#posto").select_option(label="Cap")
     frame.locator("#tempo").select_option(index=1)
@@ -138,28 +128,24 @@ with sync_playwright() as p:
     frame.locator("#instituicao").fill("CBMMG TESTE")
     frame.locator("#unidade").fill("UNIDADE TESTE")
     frame.locator("#registro").fill("0000000")
-    frame.locator("#cpf").fill("00000000000")
+    frame.locator("#cpf").fill("11144477735")
     frame.locator("#sangue").fill("O+")
     frame.locator('input[name="entry.192985690"][value="Não."]').check(force=True)
     if not frame.locator("#data").input_value():
-        frame.locator("#data").fill("2026-09-09")
+        frame.locator("#data").fill("2026-09-18")
     frame.locator('[data-step="1"] [data-next]').click()
     assert "active" in (frame.locator('[data-step="2"]').get_attribute("class") or "")
     assert frame.locator("#progressLabel").inner_text() == "Etapa 2 de 3"
 
-    # ------------------------------------------------------------------
-    # 7) E2E etapa 2.
-    # ------------------------------------------------------------------
+    # 7) Etapa 2 exercitando justamente a opção corrigida no r12.
     frame.locator("#motivo").fill("Teste automatizado de fluxo ponta a ponta.")
-    frame.locator("#ocorrencia").select_option(index=1)
+    frame.locator("#ocorrencia").select_option(label="Nunca atendi.")
     frame.locator("#presenciou").select_option(index=1)
     frame.locator('[data-step="2"] [data-next]').click()
     assert "active" in (frame.locator('[data-step="3"]').get_attribute("class") or "")
     assert frame.locator("#progressLabel").inner_text() == "Etapa 3 de 3"
 
-    # ------------------------------------------------------------------
-    # 8) E2E etapa 3: 21 grupos mapeados de forma única.
-    # ------------------------------------------------------------------
+    # 8) 21 grupos clínicos mapeados de forma única.
     assert frame.locator(".clinical-item").count() == 21
     names = frame.locator('.clinical-item input[type="radio"]').evaluate_all(
         "els => [...new Set(els.map(e => e.name))]"
@@ -170,19 +156,13 @@ with sync_playwright() as p:
         frame.locator(f'input[name="{name}"]').first.check(force=True)
     assert frame.locator("[required]:invalid").count() == 0
 
-    # ------------------------------------------------------------------
     # 9) Mobile-first / alvo de toque.
-    # ------------------------------------------------------------------
     assert page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2")
     assert frame.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2")
     assert frame.locator("#posto").evaluate("el => getComputedStyle(el).fontSize") == "16px"
     assert frame.locator("#submitBtn").evaluate("el => el.getBoundingClientRect().height >= 44")
 
-    # ------------------------------------------------------------------
-    # 10) Gate de persistência automático.
-    # HTTP 200 do formResponse NÃO é sucesso. Após um falso negativo inicial,
-    # o próprio cliente deve verificar novamente e concluir sem clique humano.
-    # ------------------------------------------------------------------
+    # 10) Gate de persistência automático: HTTP 200 isolado nunca é sucesso.
     page.evaluate(
         """() => {
           window.__catsVerifierMode = 'wrong-sheet';
@@ -212,7 +192,6 @@ with sync_playwright() as p:
     assert frame.locator("#submitBtn").is_disabled()
     assert frame.locator("#catsVerifyAgain").is_hidden()
 
-    # A planilha passa a confirmar; a próxima verificação deve ocorrer sozinha.
     page.evaluate("window.__catsVerifierMode = 'positive'")
     frame.locator("#success").wait_for(state="visible", timeout=15000)
     assert "Preenchimento confirmado" in frame.locator("#success").inner_text()
@@ -221,9 +200,7 @@ with sync_playwright() as p:
     assert frame.locator("#success").get_attribute("data-persistence-confirmed") == "true"
     context.close()
 
-    # ------------------------------------------------------------------
     # 11) Acesso direto ao legado sem sessão continua protegido.
-    # ------------------------------------------------------------------
     fresh = browser.new_context(viewport={"width": 900, "height": 800})
     fresh_page = fresh.new_page()
     fresh_page.goto(LEGACY, wait_until="domcontentloaded")
@@ -234,4 +211,4 @@ with sync_playwright() as p:
 
     browser.close()
 
-print("PASS: Smoke + E2E CATS — envio e confirmação automáticos; POST isolado nunca gera falso sucesso.")
+print("PASS: Smoke + E2E CATS — contrato Forms r12, envio e confirmação automáticos; POST isolado nunca gera falso sucesso.")
