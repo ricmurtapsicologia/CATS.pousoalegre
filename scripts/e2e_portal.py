@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
-import re
 import sys
 import time
 from playwright.sync_api import sync_playwright
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8765/"
+PRE = BASE.rstrip("/") + "/precurso.html"
+LEGACY = BASE.rstrip("/") + "/legacy.html"
+PRECURSO_CONFIG_VERSION = "2026.09.18-r16-iso-pure"
 
 
 def auth_payload() -> str:
@@ -31,7 +33,7 @@ with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
 
     # ------------------------------------------------------------------
-    # Smoke: gate, autenticação e portal principal
+    # Portal principal: gate, autenticação e superfície curricular.
     # ------------------------------------------------------------------
     context = browser.new_context(viewport={"width": 1280, "height": 900})
     page = context.new_page()
@@ -51,7 +53,6 @@ with sync_playwright() as p:
     page.wait_for_selector("#aulas")
     page.wait_for_timeout(500)
 
-    # Superfície curricular: oito aulas teóricas, sem bloco de avaliação/provas.
     for n in range(1, 9):
         lesson = page.locator(f'#cards article[data-module="{n}"]')
         assert lesson.count() == 1, n
@@ -88,7 +89,7 @@ with sync_playwright() as p:
     assert first_desktop.locator(".content").is_visible()
     assert first_desktop.locator(".lesson-toggle").is_hidden()
 
-    # Onboarding do portal principal.
+    # Onboarding: valida conteúdo e fechamento real pelo CTA.
     welcome = browser.new_context(viewport={"width": 390, "height": 844})
     install_session(welcome, onboarded=False)
     w = welcome.new_page()
@@ -99,123 +100,68 @@ with sync_playwright() as p:
     assert "avaliação" not in w.locator("#onboard").inner_text().lower()
     text_align = w.locator(".onboard-welcome p").first.evaluate("el => getComputedStyle(el).textAlign")
     assert text_align == "justify", text_align
-    w.locator("#ob-next").click()
-    assert w.locator("#onboard").is_hidden()
+    w.locator("#ob-next").click(force=True)
+    w.locator("#onboard").wait_for(state="hidden", timeout=3000)
     welcome.close()
 
     # ------------------------------------------------------------------
-    # Smoke + E2E dedicado: formulário / pré-curso
+    # Integração do portal com a página de pré-curso.
+    # O contrato profundo de envio/persistência pertence a e2e_precurso.py.
     # ------------------------------------------------------------------
-    page.goto(BASE + "precurso.html", wait_until="networkidle")
+    page.goto(PRE, wait_until="networkidle")
     page.wait_for_selector("#catsAuthGate", state="attached", timeout=15000)
     assert page.locator("#catsAuthGate").is_hidden()
-    assert page.locator("#app").count() == 1
     page.wait_for_selector("#app.ready", timeout=15000)
     assert page.locator("#boot").is_hidden()
 
-    # Metadados essenciais da página do formulário.
-    assert page.locator('meta[name="description"]').count() == 1
+    assert "Pouso Alegre" in page.title()
+    assert "Pouso Alegre" in page.locator('meta[name="description"]').get_attribute("content")
     assert page.locator('meta[property="og:title"]').count() == 1
     assert page.locator('meta[property="og:description"]').count() == 1
     assert page.locator('meta[property="og:image"]').count() == 1
     assert page.locator('meta[name="twitter:card"][content="summary_large_image"]').count() == 1
+    assert page.evaluate("window.__CATS_PERSISTENCE_CONFIG_VERSION__") == PRECURSO_CONFIG_VERSION
+    assert page.evaluate("window.__CATS_PERSISTENCE_VERIFY_MODE__") == "pure-payload"
 
-    form_frame = page.frame(url=re.compile(r"legacy\.html"))
-    assert form_frame is not None, "iframe legacy.html não carregou"
+    iframe_handle = page.locator("#app").element_handle()
+    assert iframe_handle is not None
+    form_frame = iframe_handle.content_frame()
+    assert form_frame is not None
 
-    # Hero, branding e ausência de resíduos de outra edição/unidade.
-    hero_text = form_frame.locator("header.hero").inner_text()
-    assert "Pouso Alegre" in hero_text
-    assert "7ª Cia Ind" in hero_text
-    assert "Lucas Antônio de Oliveira" in hero_text
+    hero_text = form_frame.locator("header.hero").inner_text().lower()
+    assert "viii cats" in hero_text
+    assert "curso de atendimento a tentativas de suicídio" in hero_text
     for forbidden in ("4º BBM", "4° BBM", "CATS 2025"):
-        assert forbidden not in form_frame.locator("body").inner_text(), forbidden
+        assert forbidden.lower() not in form_frame.locator("body").inner_text().lower(), forbidden
 
     form = form_frame.locator("#catsForm")
     assert form.count() == 1
     assert form.get_attribute("method").lower() == "post"
     assert form.get_attribute("target") == "google-response"
     assert form.get_attribute("data-forms-linked") == "true"
+    assert form.get_attribute("data-persistence-guard") == "strict"
     assert form.get_attribute("action").endswith("/formResponse")
     assert form_frame.locator(".step").count() == 3
     assert form_frame.locator("[required]:not([name])").count() == 0
     assert form_frame.locator('[name^="temp_"]').count() == 0
-
-    # Os selects canônicos foram instalados pelo wrapper.
+    assert form_frame.locator(".clinical-item").count() == 21
     assert form_frame.locator("#posto option").count() == 15
     assert form_frame.locator("#tempo option").count() == 7
     assert form_frame.locator("#ocorrencia option").count() == 5
     assert form_frame.locator("#presenciou option").count() == 5
+    assert form_frame.locator("#ocorrencia option").nth(1).get_attribute("value") == "Nunca atendi."
 
-    # Validação negativa: não avança com campos obrigatórios vazios.
-    form_frame.locator('[data-step="1"] [data-next]').click()
-    assert form_frame.locator('[data-step="1"]').get_attribute("class").find("active") >= 0
-    assert form_frame.locator(".error").evaluate_all("els => els.some(e => e.textContent.trim().length > 0)")
-
-    # Preenche etapa 1 com dados sintéticos; nada é enviado ao Google neste teste.
-    form_frame.locator("#nome").fill("TESTE AUTOMATIZADO CATS")
-    form_frame.locator("#posto").select_option(label="Cap")
-    form_frame.locator("#tempo").select_option(index=1)
-    form_frame.locator("#email").fill("teste.e2e@example.invalid")
-    form_frame.locator("#instituicao").fill("CBMMG TESTE")
-    form_frame.locator("#unidade").fill("UNIDADE TESTE")
-    form_frame.locator("#registro").fill("0000000")
-    form_frame.locator("#cpf").fill("00000000000")
-    form_frame.locator("#sangue").fill("O+")
-    form_frame.locator('input[name="entry.192985690"][value="Não."]').check()
-    if not form_frame.locator("#data").input_value():
-        form_frame.locator("#data").fill("2026-09-09")
-    form_frame.locator('[data-step="1"] [data-next]').click()
-    assert form_frame.locator('[data-step="2"]').get_attribute("class").find("active") >= 0
-    assert form_frame.locator("#progressLabel").inner_text() == "Etapa 2 de 3"
-
-    # Etapa 2.
-    form_frame.locator("#motivo").fill("Teste automatizado de fluxo ponta a ponta.")
-    form_frame.locator("#ocorrencia").select_option(index=1)
-    form_frame.locator("#presenciou").select_option(index=1)
-    form_frame.locator('[data-step="2"] [data-next]').click()
-    assert form_frame.locator('[data-step="3"]').get_attribute("class").find("active") >= 0
-    assert form_frame.locator("#progressLabel").inner_text() == "Etapa 3 de 3"
-
-    # Etapa 3: 21 grupos clínicos, todos mapeados para nomes únicos.
-    assert form_frame.locator(".clinical-item").count() == 21
-    clinical_names = form_frame.locator('.clinical-item input[type="radio"]').evaluate_all(
-        "els => [...new Set(els.map(e => e.name))]"
-    )
-    assert len(clinical_names) == 21, clinical_names
-    assert all(name.startswith("entry.") for name in clinical_names), clinical_names
-    for name in clinical_names:
-        form_frame.locator(f'input[name="{name}"]').first.check()
-    assert form_frame.locator("[required]:invalid").count() == 0
-
-    # Intercepta o POST: valida o fluxo completo sem gravar dados de teste no formulário real.
-    submitted = {"seen": False}
-
-    def intercept_form(route):
-        submitted["seen"] = True
-        assert route.request.method == "POST"
-        assert "formResponse" in route.request.url
-        route.fulfill(status=200, content_type="text/html", body="<html><body>ok</body></html>")
-
-    page.route("**/formResponse", intercept_form)
-    form_frame.locator("#submitBtn").click()
-    form_frame.locator("#success").wait_for(state="visible", timeout=10000)
-    assert submitted["seen"]
-    assert "Envio concluído" in form_frame.locator("#success").inner_text()
-    assert "formulário oficial" in form_frame.locator("#success").inner_text()
-    assert form.is_hidden()
-
-    # Acesso direto ao legado sem sessão retorna ao fluxo protegido.
+    # Acesso direto ao legado sem sessão continua protegido.
     fresh = browser.new_context(viewport={"width": 900, "height": 800})
     fresh_page = fresh.new_page()
-    fresh_page.goto(BASE + "legacy.html", wait_until="domcontentloaded")
+    fresh_page.goto(LEGACY, wait_until="domcontentloaded")
     fresh_page.wait_for_url("**/precurso.html", timeout=10000)
     fresh_page.wait_for_selector('#catsAuthGate[data-cats-pa-branded="true"]', timeout=15000)
     assert fresh_page.locator("#catsAuthGate").is_visible()
     fresh.close()
 
     # ------------------------------------------------------------------
-    # Mobile-first: portal e pré-curso sem overflow horizontal
+    # Mobile-first: portal e pré-curso sem overflow horizontal.
     # ------------------------------------------------------------------
     mobile = browser.new_context(viewport={"width": 390, "height": 844})
     install_session(mobile, onboarded=True)
@@ -224,6 +170,11 @@ with sync_playwright() as p:
     m.wait_for_selector("#aulas")
     m.wait_for_timeout(500)
     assert m.locator("#catsAuthGate").is_hidden()
+
+    # O portal atual pode exibir onboarding; feche-o quando presente para testar a UI subjacente.
+    if m.locator("#onboard").is_visible():
+        m.locator("#ob-next").click(force=True)
+        m.locator("#onboard").wait_for(state="hidden", timeout=3000)
 
     width_ok = m.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2")
     assert width_ok, (m.evaluate("document.documentElement.scrollWidth"), m.evaluate("document.documentElement.clientWidth"))
@@ -264,11 +215,12 @@ with sync_playwright() as p:
     assert m.locator("#videosGrid").is_visible()
     assert m.locator("#assessmentPanel").count() == 0
 
-    # Pré-curso mobile: wrapper e iframe não podem criar rolagem horizontal.
-    m.goto(BASE + "precurso.html", wait_until="networkidle")
+    m.goto(PRE, wait_until="networkidle")
     m.wait_for_selector("#app.ready", timeout=15000)
     assert m.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2")
-    mf = m.frame(url=re.compile(r"legacy\.html"))
+    iframe_handle_mobile = m.locator("#app").element_handle()
+    assert iframe_handle_mobile is not None
+    mf = iframe_handle_mobile.content_frame()
     assert mf is not None
     assert mf.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2")
     assert mf.locator("#posto").evaluate("el => getComputedStyle(el).fontSize") == "16px"
@@ -278,4 +230,4 @@ with sync_playwright() as p:
     context.close()
     browser.close()
 
-print("PASS: Smoke + E2E VIII CATS — portal, autenticação, pré-curso, formulário em 3 etapas, 21 grupos mapeados, POST interceptado e mobile-first.")
+print("PASS: Smoke + E2E VIII CATS — portal, autenticação, onboarding, integração do pré-curso e mobile-first; persistência profunda delegada ao E2E dedicado.")
