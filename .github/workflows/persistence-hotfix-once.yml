@@ -1,0 +1,52 @@
+name: CATS Pré-curso — Hotfix persistência (one-shot)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/persistence-hotfix-once.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  apply-test-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Aplicar SPEC e hotfix fail-closed
+        run: |
+          python -m py_compile scripts/apply_persistence_hotfix.py
+          python scripts/apply_persistence_hotfix.py
+
+      - name: Instalar Playwright
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
+
+      - name: Servir página localmente
+        run: |
+          python -m http.server 8765 --bind 127.0.0.1 > /tmp/cats-pre-http.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8765/precurso.html >/dev/null && exit 0; sleep 0.5; done
+          cat /tmp/cats-pre-http.log
+          exit 1
+
+      - name: Smoke + E2E do gate de persistência
+        run: python scripts/e2e_precurso.py http://127.0.0.1:8765/
+
+      - name: Commit do hotfix validado
+        run: |
+          git config user.name 'CATS Hotfix Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add precurso.html persistence-config.js scripts/e2e_precurso.py scripts/apply_persistence_hotfix.py .github/workflows/precurso-smoke-e2e.yml docs/precurso-persistence-spec.md apps-script/CATS_PersistenceVerifier.gs
+          git diff --cached --check
+          git commit -m 'Hotfix: só confirma pré-curso após persistência na planilha'
+          git push origin main
