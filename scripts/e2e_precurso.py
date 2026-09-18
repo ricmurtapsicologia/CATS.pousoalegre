@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 import time
@@ -8,7 +9,7 @@ from playwright.sync_api import sync_playwright
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8765/"
 PRE = BASE.rstrip("/") + "/precurso.html"
 LEGACY = BASE.rstrip("/") + "/legacy.html"
-CONFIG_VERSION = "2026.09.18-r12-forms-contract"
+CONFIG_VERSION = "2026.09.18-r16-iso-pure"
 
 
 def auth_payload() -> str:
@@ -71,7 +72,7 @@ with sync_playwright() as p:
     assert page.locator("#boot").is_hidden()
     assert frame.locator("#catsForm").count() == 1
 
-    # 2) Metadados e prévia social.
+    # 2) Metadados, prévia social e contrato de persistência.
     assert page.locator('link[rel="canonical"]').get_attribute("href").endswith("/precurso.html")
     assert page.locator('meta[property="og:url"]').get_attribute("content").endswith("/precurso.html")
     assert page.locator('meta[property="og:title"]').count() == 1
@@ -82,6 +83,7 @@ with sync_playwright() as p:
     assert page.locator('link[rel="icon"]').count() == 1
     assert frame.evaluate("sessionStorage.getItem('cats_pa_auth_v1')") is not None
     assert page.evaluate("window.__CATS_PERSISTENCE_CONFIG_VERSION__") == CONFIG_VERSION
+    assert page.evaluate("window.__CATS_PERSISTENCE_VERIFY_MODE__") == "pure-payload"
 
     # 3) Identidade e resíduos.
     hero = frame.locator("header.hero").inner_text().lower()
@@ -108,7 +110,7 @@ with sync_playwright() as p:
     assert frame.locator("#ocorrencia option").count() == 5
     assert frame.locator("#presenciou option").count() == 5
 
-    # Contrato r12: o valor literal enviado ao Forms deve coincidir com a opção oficial.
+    # Contrato atual: o valor literal enviado ao Forms deve coincidir com a opção oficial.
     assert frame.locator('#ocorrencia').get_attribute('name') == 'entry.500885681'
     first_occurrence = frame.locator('#ocorrencia option').nth(1)
     assert first_occurrence.get_attribute('value') == 'Nunca atendi.'
@@ -137,7 +139,7 @@ with sync_playwright() as p:
     assert "active" in (frame.locator('[data-step="2"]').get_attribute("class") or "")
     assert frame.locator("#progressLabel").inner_text() == "Etapa 2 de 3"
 
-    # 7) Etapa 2 exercitando justamente a opção corrigida no r12.
+    # 7) Etapa 2 exercitando a opção corrigida no contrato Forms.
     frame.locator("#motivo").fill("Teste automatizado de fluxo ponta a ponta.")
     frame.locator("#ocorrencia").select_option(label="Nunca atendi.")
     frame.locator("#presenciou").select_option(index=1)
@@ -162,21 +164,27 @@ with sync_playwright() as p:
     assert frame.locator("#posto").evaluate("el => getComputedStyle(el).fontSize") == "16px"
     assert frame.locator("#submitBtn").evaluate("el => el.getBoundingClientRect().height >= 44")
 
-    # 10) Gate de persistência automático: HTTP 200 isolado nunca é sucesso.
+    # 10) Gate de persistência: HTTP 200 isolado nunca é sucesso.
+    # O mock apenas substitui o backend; o fingerprint é produzido pelo código real
+    # do precurso.html e precisa corresponder exatamente ao contrato ISO do Apps Script.
     page.evaluate(
         """() => {
           window.__catsVerifierMode = 'wrong-sheet';
+          window.__catsLastPayload = null;
           window.__CATS_PERSISTENCE_VERIFY_TIMEOUT__ = 500;
-          window.__CATS_PERSISTENCE_VERIFY__ = async payload => ({
-            protocol: 'cats-persistence-v1',
-            persisted: true,
-            terminal: true,
-            sheetId: window.__catsVerifierMode === 'positive'
-              ? '1wQ0nc6TmCqqbu-ZqloIRLptO6iHqDhD00qrFLxP-fUk'
-              : 'SHEET-ERRADA',
-            formEditId: '1107fjdaiL42Zb0n2jNjKr0aiNNysyEADQCesdBTbD_E',
-            fingerprint: payload.fingerprint
-          });
+          window.__CATS_PERSISTENCE_VERIFY__ = async payload => {
+            window.__catsLastPayload = {...payload};
+            return {
+              protocol: 'cats-persistence-v1',
+              persisted: true,
+              terminal: true,
+              sheetId: window.__catsVerifierMode === 'positive'
+                ? '1wQ0nc6TmCqqbu-ZqloIRLptO6iHqDhD00qrFLxP-fUk'
+                : 'SHEET-ERRADA',
+              formEditId: '1107fjdaiL42Zb0n2jNjKr0aiNNysyEADQCesdBTbD_E',
+              fingerprint: payload.fingerprint
+            };
+          };
         }"""
     )
 
@@ -187,6 +195,11 @@ with sync_playwright() as p:
         timeout=10000,
     )
     assert submitted["seen"]
+
+    expected_canonical = "TESTE AUTOMATIZADO CATS|teste.e2e@example.invalid|11144477735|2026-09-18"
+    expected_fingerprint = hashlib.sha256(expected_canonical.encode("utf-8")).hexdigest()
+    assert page.evaluate("window.__catsLastPayload?.fingerprint") == expected_fingerprint
+
     assert frame.locator("#success").is_hidden()
     assert form.is_visible()
     assert frame.locator("#submitBtn").is_disabled()
@@ -211,4 +224,4 @@ with sync_playwright() as p:
 
     browser.close()
 
-print("PASS: Smoke + E2E CATS — contrato Forms r12, envio e confirmação automáticos; POST isolado nunca gera falso sucesso.")
+print("PASS: Smoke + E2E CATS — fingerprint ISO canônico, verificador puro, envio e confirmação automáticos; POST isolado nunca gera falso sucesso.")
