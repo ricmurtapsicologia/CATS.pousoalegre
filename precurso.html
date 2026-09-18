@@ -7,7 +7,7 @@
   <meta name="robots" content="noindex,nofollow,noarchive">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="description" content="Boas-vindas e levantamento prévio do VIII CATS 2026 em Pouso Alegre — CBMMG.">
-  <meta name="cats-build" content="2026.09.18-r10-persist">
+  <meta name="cats-build" content="2026.09.18-r16-iso-contract">
   <title>VIII CATS 2026 | Boas-vindas — Pouso Alegre</title>
   <link rel="canonical" href="https://ricmurtapsicologia.github.io/CATS.pousoalegre/precurso.html">
   <meta property="og:locale" content="pt_BR">
@@ -40,7 +40,7 @@
   <link data-cats-auth rel="stylesheet" href="https://ricmurtapsicologia.github.io/Curso-ATS/auth.css?v=20260905-2">
   <link rel="stylesheet" href="cats-auth.css?v=20260905-1">
   <script defer src="cats-auth.js?v=20260909-2"></script>
-  <script src="persistence-config.js?v=20260918-r9-auto"></script>
+  <script src="persistence-config.js?v=20260918-r16-iso"></script>
   <script defer src="https://ricmurtapsicologia.github.io/Curso-ATS/auth.js?v=20260905-2"></script>
 </head>
 <body>
@@ -51,7 +51,7 @@
 (()=>{
   'use strict';
 
-  const BUILD='2026.09.18-r10-persist';
+  const BUILD='2026.09.18-r16-iso-contract';
   const FORM_ACTION='https://docs.google.com/forms/d/e/1FAIpQLScVj6HESm2cWDN3sNQCaoNOtWSKini7NbSHgiTXemwlyvqAXg/formResponse';
   const OFFICIAL_FORM_EDIT_ID='1107fjdaiL42Zb0n2jNjKr0aiNNysyEADQCesdBTbD_E';
   const RESPONSE_SHEET_ID='1wQ0nc6TmCqqbu-ZqloIRLptO6iHqDhD00qrFLxP-fUk';
@@ -190,8 +190,10 @@
 
   function canonicalDate(value){
     const raw=String(value??'').trim();
-    const m=raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    return m?`${m[3]}/${m[2]}/${m[1]}`:raw;
+    let m=raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(m)return raw;
+    m=raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    return m?`${m[3]}-${m[2]}-${m[1]}`:raw;
   }
 
   async function sha256Hex(text){
