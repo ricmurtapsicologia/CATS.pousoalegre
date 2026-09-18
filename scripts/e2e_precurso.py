@@ -72,6 +72,10 @@ with sync_playwright() as p:
     assert page.evaluate("window.__catsE2EFirstLoad") == "preservado"
     assert page.locator("#boot").is_hidden()
     assert frame.locator("#catsForm").count() == 1
+    frame.wait_for_function(
+        "document.documentElement.dataset.catsSubmitFeedback === '1'",
+        timeout=5000,
+    )
 
     # 2) Metadados, prévia social e contrato de persistência.
     assert page.locator('link[rel="canonical"]').get_attribute("href").endswith("/precurso.html")
@@ -87,7 +91,6 @@ with sync_playwright() as p:
     assert page.evaluate("window.__CATS_PERSISTENCE_VERIFY_MODE__") == "pure-payload"
 
     # 3) Identidade: a rota é Pouso Alegre; o hero pode permanecer institucional.
-    # Não acoplamos o E2E do pré-curso ao nome do coordenador/unidade do portal principal.
     title = page.title().lower()
     description = page.locator('meta[name="description"]').get_attribute("content").lower()
     hero = frame.locator("header.hero").inner_text().lower()
@@ -115,7 +118,6 @@ with sync_playwright() as p:
     assert frame.locator("#ocorrencia option").count() == 5
     assert frame.locator("#presenciou option").count() == 5
 
-    # Contrato atual: o valor literal enviado ao Forms deve coincidir com a opção oficial.
     assert frame.locator('#ocorrencia').get_attribute('name') == 'entry.500885681'
     first_occurrence = frame.locator('#ocorrencia option').nth(1)
     assert first_occurrence.get_attribute('value') == 'Nunca atendi.'
@@ -127,7 +129,7 @@ with sync_playwright() as p:
     assert "active" in (frame.locator('[data-step="1"]').get_attribute("class") or "")
     assert frame.locator(".error").evaluate_all("els => els.some(e => e.textContent.trim().length > 0)")
 
-    # 6) Etapa 1 com dados sintéticos e data fixa para o teste ser determinístico.
+    # 6) Etapa 1 com dados sintéticos e data fixa.
     frame.locator("#nome").fill("TESTE AUTOMATIZADO CATS")
     frame.locator("#posto").select_option(label="Cap")
     frame.locator("#tempo").select_option(index=1)
@@ -168,9 +170,9 @@ with sync_playwright() as p:
     assert frame.locator("#posto").evaluate("el => getComputedStyle(el).fontSize") == "16px"
     assert frame.locator("#submitBtn").evaluate("el => el.getBoundingClientRect().height >= 44")
 
-    # 10) Gate de persistência: HTTP 200 isolado nunca é sucesso.
-    # O mock apenas substitui o backend; o fingerprint é produzido pelo código real
-    # do precurso.html e precisa corresponder exatamente ao contrato ISO do Apps Script.
+    # 10) Gate de persistência e feedback imediato.
+    # O mock substitui somente o backend de verificação. O POST do formulário continua
+    # real dentro do browser de teste e HTTP 200, sozinho, jamais marca persistência.
     page.evaluate(
         """() => {
           window.__catsVerifierMode = 'wrong-sheet';
@@ -193,6 +195,22 @@ with sync_playwright() as p:
     )
 
     frame.locator("#submitBtn").click()
+    pending = frame.locator("#catsSubmitPending")
+    pending.wait_for(state="visible", timeout=3000)
+    pending_text = pending.inner_text()
+    assert "Envio realizado" in pending_text
+    assert "confirmando o registro" in pending_text
+    assert form.is_hidden()
+    assert frame.locator("#success").get_attribute("data-persistence-confirmed") != "true"
+
+    # Privacidade: nenhum resultado BDI-II, escore ou classificação pode chegar ao respondente.
+    participant_text = frame.locator("body").inner_text().lower()
+    assert "bdi-ii" not in participant_text
+    assert "intensidade mínima" not in participant_text
+    assert "intensidade leve" not in participant_text
+    assert "intensidade moderada" not in participant_text
+    assert "intensidade grave" not in participant_text
+
     frame.locator("#catsPersistenceStatus").wait_for(state="visible", timeout=10000)
     frame.wait_for_function(
         "document.getElementById('catsPersistenceStatus').textContent.includes('Confirmando automaticamente')",
@@ -204,17 +222,31 @@ with sync_playwright() as p:
     expected_fingerprint = hashlib.sha256(expected_canonical.encode("utf-8")).hexdigest()
     assert page.evaluate("window.__catsLastPayload?.fingerprint") == expected_fingerprint
 
-    assert frame.locator("#success").is_hidden()
-    assert form.is_visible()
+    # Resposta positiva apontando para planilha errada não pode promover o estado final.
+    assert frame.locator("#success").get_attribute("data-persistence-confirmed") != "true"
+    assert "registrada com sucesso" not in frame.locator("body").inner_text().lower()
     assert frame.locator("#submitBtn").is_disabled()
     assert frame.locator("#catsVerifyAgain").is_hidden()
 
+    # Apenas a confirmação independente da planilha oficial libera a mensagem final.
     page.evaluate("window.__catsVerifierMode = 'positive'")
-    frame.locator("#success").wait_for(state="visible", timeout=15000)
-    assert "Preenchimento confirmado" in frame.locator("#success").inner_text()
-    assert "planilha oficial" in frame.locator("#success").inner_text()
+    success = frame.locator("#success")
+    success.wait_for(state="visible", timeout=15000)
+    frame.wait_for_function(
+        "document.getElementById('success')?.textContent.includes('Parabéns! Sua participação foi registrada com sucesso.')",
+        timeout=3000,
+    )
+    final_text = success.inner_text()
+    assert "Parabéns! Sua participação foi registrada com sucesso." in final_text
+    assert "Seja bem-vindo(a) ao VIII Curso de Atendimento a Tentativas de Suicídio" in final_text
+    assert "CATS 2026" in final_text
+    assert "Pouso Alegre" in final_text
     assert form.is_hidden()
-    assert frame.locator("#success").get_attribute("data-persistence-confirmed") == "true"
+    assert success.get_attribute("data-persistence-confirmed") == "true"
+    assert frame.locator("#catsSubmitPending").is_hidden()
+
+    final_participant_text = frame.locator("body").inner_text().lower()
+    assert "bdi-ii" not in final_participant_text
     context.close()
 
     # 11) Acesso direto ao legado sem sessão continua protegido.
@@ -228,4 +260,4 @@ with sync_playwright() as p:
 
     browser.close()
 
-print("PASS: Smoke + E2E CATS — identidade da rota, fingerprint ISO canônico, verificador puro, envio e confirmação automáticos; POST isolado nunca gera falso sucesso.")
+print("PASS: Smoke + E2E CATS — envio imediato sem falso positivo, confirmação independente, boas-vindas finais e BDI-II ausente do navegador.")
