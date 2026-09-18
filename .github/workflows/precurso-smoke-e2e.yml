@@ -7,6 +7,7 @@ on:
       - '.github/workflows/precurso-smoke-e2e.yml'
       - 'precurso.html'
       - 'legacy.html'
+      - 'persistence-config.js'
       - 'cats-auth.js'
       - 'cats-auth.css'
       - 'scripts/e2e_precurso.py'
@@ -36,6 +37,62 @@ jobs:
           for i in {1..30}; do curl -fsS http://127.0.0.1:8765/precurso.html >/dev/null && exit 0; sleep 0.5; done
           cat /tmp/cats-pre-http.log
           exit 1
+
+      - name: Smoke real do verificador de persistência
+        run: |
+          python - <<'PY'
+          from playwright.sync_api import sync_playwright
+
+          FORM_ID = '1107fjdaiL42Zb0n2jNjKr0aiNNysyEADQCesdBTbD_E'
+          SHEET_ID = '1wQ0nc6TmCqqbu-ZqloIRLptO6iHqDhD00qrFLxP-fUk'
+          FINGERPRINT = '0' * 64
+
+          with sync_playwright() as p:
+              browser = p.chromium.launch(headless=True)
+              page = browser.new_page()
+              page.goto('http://127.0.0.1:8765/precurso.html', wait_until='domcontentloaded')
+              endpoint = page.evaluate('window.CATS_PERSISTENCE_VERIFY_URL')
+              assert endpoint.startswith('https://script.google.com/macros/s/') and endpoint.endswith('/exec'), endpoint
+
+              result = page.evaluate(
+                  '''async ({endpoint, formId, sheetId, fingerprint}) => {
+                    try {
+                      const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: {'Content-Type':'text/plain;charset=UTF-8'},
+                        body: JSON.stringify({
+                          protocol: 'cats-persistence-v1',
+                          formEditId: formId,
+                          sheetId,
+                          submittedAtEpochMs: Date.now(),
+                          fingerprint
+                        }),
+                        cache: 'no-store',
+                        credentials: 'omit',
+                        redirect: 'follow'
+                      });
+                      const text = await response.text();
+                      return {ok: response.ok, status: response.status, text};
+                    } catch (error) {
+                      return {ok:false, status:0, error:String(error)};
+                    }
+                  }''',
+                  {'endpoint': endpoint, 'formId': FORM_ID, 'sheetId': SHEET_ID, 'fingerprint': FINGERPRINT}
+              )
+
+              assert result.get('ok'), result
+              import json
+              data = json.loads(result['text'])
+              assert data['protocol'] == 'cats-persistence-v1', data
+              assert data['persisted'] is False, data
+              assert data['terminal'] is False, data
+              assert data['reason'] == 'row-not-yet-visible', data
+              assert data['formEditId'] == FORM_ID, data
+              assert data['sheetId'] == SHEET_ID, data
+              assert data['fingerprint'] == FINGERPRINT, data
+              browser.close()
+          print('PASS: verificador real acessível pelo navegador, com Form e planilha oficiais pinados.')
+          PY
 
       - name: Smoke + E2E do formulário
         run: python scripts/e2e_precurso.py http://127.0.0.1:8765/
