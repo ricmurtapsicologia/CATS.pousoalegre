@@ -231,6 +231,7 @@ with sync_playwright() as p:
 
     # Apenas a confirmação independente da planilha oficial libera a mensagem final.
     page.evaluate("window.__catsVerifierMode = 'positive'")
+    frame.locator("#catsVerifyAgain").evaluate("el => el.click()")
     success = frame.locator("#success")
     success.wait_for(state="visible", timeout=15000)
     frame.wait_for_function(
