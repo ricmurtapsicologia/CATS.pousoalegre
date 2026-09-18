@@ -49,21 +49,45 @@
       document.body.style.overflow = "";
     };
 
-    const dismiss = event => {
-      event?.preventDefault?.();
-      hide({ persist: true });
+    const show = () => {
+      panel.hidden = false;
+      panel.setAttribute("aria-hidden", "false");
+      panel.style.setProperty("display", "grid", "important");
+      document.body.style.overflow = "hidden";
     };
 
-    skip?.addEventListener("click", dismiss, true);
-    next?.addEventListener("click", dismiss, true);
-
-    // O código legado do index pode tentar reabrir o overlay após o load.
-    // Se o usuário já concluiu o onboarding, esta guarda mantém o estado fechado.
     const enforceCompletedState = () => {
       if (!isCompleted()) return;
       if (!panel.hidden || getComputedStyle(panel).display !== "none") {
         hide({ persist: false });
       }
+    };
+
+    const dismiss = event => {
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+      hide({ persist: true });
+      // Protege contra callbacks legados já enfileirados no load/timer.
+      [0, 50, 250, 1000].forEach(delay => setTimeout(enforceCompletedState, delay));
+    };
+
+    skip?.addEventListener("click", dismiss, true);
+    next?.addEventListener("click", dismiss, true);
+    document.addEventListener("click", event => {
+      if (event.target?.closest?.("#ob-skip,#ob-next")) dismiss(event);
+    }, true);
+
+    // O index legado ainda possui uma função global onboarding().
+    // Encapsulamos essa entrada para que nunca reabra o overlay após conclusão.
+    const legacyOnboarding = typeof window.onboarding === "function" ? window.onboarding : null;
+    window.onboarding = function catsOnboardingGuard() {
+      if (isCompleted()) {
+        hide({ persist: false });
+        return;
+      }
+      if (legacyOnboarding) legacyOnboarding();
+      if (isCompleted()) hide({ persist: false });
+      else show();
     };
 
     const observer = new MutationObserver(enforceCompletedState);
