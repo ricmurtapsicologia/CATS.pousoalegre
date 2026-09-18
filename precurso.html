@@ -7,7 +7,7 @@
   <meta name="robots" content="noindex,nofollow,noarchive">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="description" content="Boas-vindas e levantamento prévio do VIII CATS 2026 em Pouso Alegre — CBMMG.">
-  <meta name="cats-build" content="2026.09.09-r6">
+  <meta name="cats-build" content="2026.09.18-r7-persistence">
   <title>VIII CATS 2026 | Boas-vindas — Pouso Alegre</title>
   <link rel="canonical" href="https://ricmurtapsicologia.github.io/CATS.pousoalegre/precurso.html">
   <meta property="og:locale" content="pt_BR">
@@ -40,18 +40,23 @@
   <link data-cats-auth rel="stylesheet" href="https://ricmurtapsicologia.github.io/Curso-ATS/auth.css?v=20260905-2">
   <link rel="stylesheet" href="cats-auth.css?v=20260905-1">
   <script defer src="cats-auth.js?v=20260909-2"></script>
+  <script src="persistence-config.js?v=20260918-1"></script>
   <script defer src="https://ricmurtapsicologia.github.io/Curso-ATS/auth.js?v=20260905-2"></script>
 </head>
 <body>
   <div id="boot" role="status" aria-live="polite">Carregando formulário…</div>
-  <iframe id="app" src="legacy.html?v=2026.09.09-r6" title="VIII CATS 2026 — formulário em Pouso Alegre" scrolling="no" referrerpolicy="same-origin"></iframe>
+  <iframe id="app" src="legacy.html?v=2026.09.18-r7-persistence" title="VIII CATS 2026 — formulário em Pouso Alegre" scrolling="no" referrerpolicy="same-origin"></iframe>
 
 <script>
 (()=>{
   'use strict';
 
-  const BUILD='2026.09.09-r6';
+  const BUILD='2026.09.18-r7-persistence';
   const FORM_ACTION='https://docs.google.com/forms/d/e/1FAIpQLScVj6HESm2cWDN3sNQCaoNOtWSKini7NbSHgiTXemwlyvqAXg/formResponse';
+  const OFFICIAL_FORM_EDIT_ID='1107fjdaiL42Zb0n2jNjKr0aiNNysyEADQCesdBTbD_E';
+  const RESPONSE_SHEET_ID='1wQ0nc6TmCqqbu-ZqloIRLptO6iHqDhD00qrFLxP-fUk';
+  const VERIFY_POLL_MS=1200;
+  const VERIFY_TIMEOUT_MS=18000;
   const HERO='https://i.pinimg.com/736x/29/42/2a/29422ad8bed8166ef119bcef4792218f.jpg';
   const POSTOS=['Cel','Ten Cel','Maj','Cap','1º Ten','2º Ten','Asp-a-Of.','Cad','Subten','1º Sgt','2º Sgt','3º Sgt','Cb','Sd'];
   const TEMPO=['até 5 anos.','de 5 a 10 anos.','De 10 a 15 anos.','De 15 a 20 anos.','de 20 a 25 anos.','Mais de 25 anos de serviço.'];
@@ -176,6 +181,206 @@
     window.scrollTo({top:y,behavior:'smooth'});
   }
 
+
+  const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+
+  function canonicalText(value){
+    return String(value??'').trim().replace(/\s+/g,' ');
+  }
+
+  async function sha256Hex(value){
+    const bytes=new TextEncoder().encode(value);
+    const digest=await crypto.subtle.digest('SHA-256',bytes);
+    return [...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  function fieldValue(form,name){
+    return form.querySelector(`[name="${name}"]`)?.value??'';
+  }
+
+  async function buildPersistencePayload(form,submittedAtEpochMs){
+    const canonical=[
+      canonicalText(fieldValue(form,'entry.1067284683')).toUpperCase(),
+      canonicalText(fieldValue(form,'entry.1556369182')).toLowerCase(),
+      canonicalText(fieldValue(form,'entry.426148251')).replace(/\D/g,''),
+      canonicalText(fieldValue(form,'entry.2092238618'))
+    ].join('|');
+    return {
+      protocol:'cats-persistence-v1',
+      formEditId:OFFICIAL_FORM_EDIT_ID,
+      sheetId:RESPONSE_SHEET_ID,
+      submittedAtEpochMs,
+      fingerprint:await sha256Hex(canonical)
+    };
+  }
+
+  async function callPersistenceVerifier(payload){
+    if(typeof window.__CATS_PERSISTENCE_VERIFY__==='function'){
+      return await window.__CATS_PERSISTENCE_VERIFY__(payload);
+    }
+    const endpoint=String(window.CATS_PERSISTENCE_VERIFY_URL||'').trim();
+    if(!endpoint){
+      return {persisted:false,terminal:true,reason:'verifier-not-configured'};
+    }
+    try{
+      const response=await fetch(endpoint,{
+        method:'POST',
+        headers:{'Content-Type':'text/plain;charset=UTF-8'},
+        body:JSON.stringify(payload),
+        cache:'no-store',
+        credentials:'omit',
+        redirect:'follow'
+      });
+      if(!response.ok){
+        return {persisted:false,terminal:false,reason:`http-${response.status}`};
+      }
+      return await response.json();
+    }catch(error){
+      console.warn('[CATS persistence] verifier request failed',error);
+      return {persisted:false,terminal:false,reason:'network-error'};
+    }
+  }
+
+  function isValidPersistenceConfirmation(result,payload){
+    return result?.persisted===true
+      && result?.protocol==='cats-persistence-v1'
+      && result?.sheetId===RESPONSE_SHEET_ID
+      && result?.formEditId===OFFICIAL_FORM_EDIT_ID
+      && result?.fingerprint===payload.fingerprint;
+  }
+
+  async function verifyUntilPersisted(payload){
+    const override=Number(window.__CATS_PERSISTENCE_VERIFY_TIMEOUT__||0);
+    const timeout=Number.isFinite(override)&&override>0?override:VERIFY_TIMEOUT_MS;
+    const deadline=Date.now()+timeout;
+    let last={persisted:false,reason:'not-checked'};
+    do{
+      last=await callPersistenceVerifier(payload);
+      if(isValidPersistenceConfirmation(last,payload))return {ok:true,result:last};
+      if(last?.terminal===true)break;
+      if(Date.now()<deadline)await sleep(VERIFY_POLL_MS);
+    }while(Date.now()<=deadline);
+    return {ok:false,result:last};
+  }
+
+  function installPersistenceGuard(doc,form){
+    const responseFrame=doc.getElementById('google-response');
+    const success=doc.getElementById('success');
+    const submit=doc.getElementById('submitBtn');
+    if(!responseFrame||!success||!submit)throw new Error('Guard de persistência: estrutura incompleta');
+
+    const style=doc.createElement('style');
+    style.id='catsPersistenceGuardStyle';
+    style.textContent='#success:not([data-persistence-confirmed="true"]){display:none!important}';
+    doc.head.append(style);
+
+    const status=doc.createElement('div');
+    status.id='catsPersistenceStatus';
+    status.className='notice info';
+    status.setAttribute('role','status');
+    status.setAttribute('aria-live','polite');
+    status.hidden=true;
+
+    const actions=submit.closest('.actions');
+    if(!actions)throw new Error('Guard de persistência: ações não encontradas');
+    actions.parentNode.insertBefore(status,actions);
+
+    const verifyAgain=doc.createElement('button');
+    verifyAgain.type='button';
+    verifyAgain.id='catsVerifyAgain';
+    verifyAgain.className='btn btn-secondary';
+    verifyAgain.textContent='Verificar gravação';
+    verifyAgain.hidden=true;
+    actions.insertBefore(verifyAgain,submit);
+
+    let state=null;
+
+    function keepUnconfirmedVisible(){
+      success.removeAttribute('data-persistence-confirmed');
+      success.classList.remove('show');
+      form.style.display='';
+    }
+
+    function setPending(message){
+      keepUnconfirmedVisible();
+      status.hidden=false;
+      status.className='notice info';
+      status.textContent=message;
+      verifyAgain.hidden=true;
+    }
+
+    function setUnconfirmed(){
+      keepUnconfirmedVisible();
+      status.hidden=false;
+      status.className='notice warn';
+      status.textContent='A tentativa de envio terminou, mas a gravação na planilha oficial NÃO foi confirmada. O preenchimento ainda não está concluído. Não feche esta página.';
+      verifyAgain.hidden=false;
+      submit.disabled=true;
+      submit.textContent='Envio sem confirmação';
+    }
+
+    function setConfirmed(payload){
+      status.hidden=true;
+      verifyAgain.hidden=true;
+      success.dataset.persistenceConfirmed='true';
+      const h=success.querySelector('h2');
+      const p=success.querySelector('p');
+      if(h)h.textContent='Preenchimento confirmado';
+      if(p)p.textContent='Dados gravados na planilha oficial de respostas.';
+      form.style.display='none';
+      success.classList.add('show');
+      success.dataset.fingerprint=payload.fingerprint.slice(0,12);
+    }
+
+    async function runVerification(){
+      if(!state||state.verifying)return;
+      state.verifying=true;
+      verifyAgain.disabled=true;
+      setPending('Verificando a gravação na planilha oficial...');
+      try{
+        const payload=await state.payloadPromise;
+        const verification=await verifyUntilPersisted(payload);
+        if(verification.ok){
+          state.confirmed=true;
+          setConfirmed(payload);
+        }else{
+          setUnconfirmed();
+        }
+      }catch(error){
+        console.error('[CATS persistence]',error);
+        setUnconfirmed();
+      }finally{
+        state.verifying=false;
+        verifyAgain.disabled=false;
+      }
+    }
+
+    form.addEventListener('submit',event=>{
+      if(event.defaultPrevented)return;
+      const submittedAtEpochMs=Date.now();
+      state={
+        submittedAtEpochMs,
+        payloadPromise:buildPersistencePayload(form,submittedAtEpochMs),
+        verifying:false,
+        confirmed:false
+      };
+      setPending('Enviando ao Google Forms. Aguardando confirmação da planilha oficial...');
+    });
+
+    responseFrame.addEventListener('load',()=>{
+      if(!state||state.confirmed)return;
+      // legacy.html trata qualquer load do iframe como sucesso. Este hotfix
+      // reverte essa sinalização antes da pintura e só libera o sucesso
+      // depois da confirmação independente da planilha.
+      keepUnconfirmedVisible();
+      runVerification();
+    });
+
+    verifyAgain.addEventListener('click',()=>runVerification());
+
+    return {getState:()=>state,runVerification};
+  }
+
   frame.addEventListener('load',()=>{
     try{
       const doc=frame.contentDocument;
@@ -209,10 +414,12 @@
       form.target='google-response';
       form.enctype='application/x-www-form-urlencoded';
       form.dataset.formsLinked='true';
+      form.dataset.persistenceGuard='strict';
 
       const missing=[...form.querySelectorAll('[required]')].filter(el=>!el.name);
       const temporary=[...form.elements].filter(el=>typeof el.name==='string'&&el.name.startsWith('temp_'));
       if(missing.length||temporary.length)throw new Error('Mapeamento do Google Forms incompleto');
+      installPersistenceGuard(doc,form);
 
       const submit=doc.getElementById('submitBtn');
       if(submit)submit.textContent='Enviar formulário';
@@ -220,8 +427,8 @@
       if(success){
         const h=success.querySelector('h2');
         const p=success.querySelector('p');
-        if(h)h.textContent='Envio concluído';
-        if(p)p.textContent='As respostas foram encaminhadas ao formulário oficial.';
+        if(h)h.textContent='Confirmação pendente';
+        if(p)p.textContent='O preenchimento só será concluído após confirmação na planilha oficial.';
       }
 
       ['posto','tempo','ocorrencia','presenciou'].forEach(id=>{
