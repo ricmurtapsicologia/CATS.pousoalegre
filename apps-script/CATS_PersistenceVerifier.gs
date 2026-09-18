@@ -1,27 +1,47 @@
 /**
- * CATS Pré-curso — verificador de persistência v1.
- * Deploy como Web App (doGet não é necessário). Retorna somente status e hashes;
- * nunca retorna dados pessoais ou respostas clínicas.
+ * CATS Pré-curso — verificador de persistência v1.1.
+ * Objetivo: só confirmar conclusão quando a linha correspondente estiver
+ * materializada na planilha oficial. Não retorna PII nem respostas clínicas.
+ *
+ * Deploy: Web App | executar como proprietário | acesso: qualquer pessoa.
  */
 const CATS = Object.freeze({
   protocol: 'cats-persistence-v1',
   formEditId: '1107fjdaiL42Zb0n2jNjKr0aiNNysyEADQCesdBTbD_E',
   sheetId: '1wQ0nc6TmCqqbu-ZqloIRLptO6iHqDhD00qrFLxP-fUk',
   sheetName: 'Respostas ao formulário 1',
-  maxRowsToScan: 120,
+  maxRowsToScan: 160,
   clockSkewMs: 2 * 60 * 1000,
 });
 
+function doGet() {
+  return json_({
+    protocol: CATS.protocol,
+    status: 'ready',
+    formEditId: CATS.formEditId,
+    sheetId: CATS.sheetId,
+  });
+}
+
 function doPost(e) {
+  let stage = 'parse-request';
+  let fingerprint = '';
   try {
     const payload = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    fingerprint = String(payload && payload.fingerprint || '');
+    stage = 'verify-request';
     return json_(verifyPersistence_(payload));
   } catch (err) {
+    // Diagnóstico deliberadamente sanitizado: informa apenas a etapa técnica.
     return json_({
       protocol: CATS.protocol,
       persisted: false,
       terminal: true,
-      reason: 'invalid-request',
+      reason: 'backend-error',
+      stage: stage,
+      formEditId: CATS.formEditId,
+      sheetId: CATS.sheetId,
+      fingerprint: fingerprint,
     });
   }
 }
@@ -32,28 +52,47 @@ function verifyPersistence_(payload) {
   if (payload.sheetId !== CATS.sheetId) return negative_('sheet-id-mismatch', true);
   if (!/^[a-f0-9]{64}$/i.test(String(payload.fingerprint || ''))) return negative_('invalid-fingerprint', true);
 
-  // Pinagem do Google Form exato informado pelo coordenador e do destino dele.
-  const form = FormApp.openById(CATS.formEditId);
-  const destinationId = String(form.getDestinationId() || '');
-  if (destinationId !== CATS.sheetId) return negative_('form-destination-mismatch', true);
+  // O requisito de sucesso é a existência da resposta na planilha oficial.
+  // O Form ID continua pinado no protocolo, mas não dependemos de FormApp,
+  // reduzindo escopos e eliminando uma fonte desnecessária de falha.
+  let ss;
+  try {
+    ss = SpreadsheetApp.openById(CATS.sheetId);
+  } catch (err) {
+    return backendNegative_('open-sheet', payload.fingerprint);
+  }
 
-  const ss = SpreadsheetApp.openById(CATS.sheetId);
-  const sheet = ss.getSheetByName(CATS.sheetName);
-  if (!sheet) return negative_('sheet-tab-not-found', true);
+  let sheet;
+  try {
+    sheet = ss.getSheetByName(CATS.sheetName);
+  } catch (err) {
+    return backendNegative_('open-tab', payload.fingerprint);
+  }
+  if (!sheet) return negative_('sheet-tab-not-found', true, payload.fingerprint);
 
-  const lastRow = sheet.getLastRow();
-  const lastCol = sheet.getLastColumn();
-  if (lastRow < 2) return negative_('no-responses', false);
+  let lastRow, lastCol, headers, rows;
+  try {
+    lastRow = sheet.getLastRow();
+    lastCol = sheet.getLastColumn();
+    if (lastRow < 2) return negative_('no-responses', false, payload.fingerprint);
+    headers = sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
+  } catch (err) {
+    return backendNegative_('read-sheet-metadata', payload.fingerprint);
+  }
 
-  const headers = sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
   const idx = indexHeaders_(headers);
   const required = ['timestamp', 'date', 'email', 'cpf', 'name'];
   for (const key of required) {
-    if (idx[key] < 0) return negative_('header-not-found:' + key, true);
+    if (idx[key] < 0) return negative_('header-not-found:' + key, true, payload.fingerprint);
   }
 
   const startRow = Math.max(2, lastRow - CATS.maxRowsToScan + 1);
-  const rows = sheet.getRange(startRow, 1, lastRow - startRow + 1, lastCol).getValues();
+  try {
+    rows = sheet.getRange(startRow, 1, lastRow - startRow + 1, lastCol).getValues();
+  } catch (err) {
+    return backendNegative_('read-response-rows', payload.fingerprint);
+  }
+
   const submittedAt = Number(payload.submittedAtEpochMs || 0);
   const lowerBound = submittedAt > 0 ? submittedAt - CATS.clockSkewMs : 0;
   const tz = ss.getSpreadsheetTimeZone() || Session.getScriptTimeZone() || 'America/Sao_Paulo';
@@ -125,9 +164,9 @@ function timestampMs_(value, tz) {
   const s = canonicalText_(value);
   const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})(?::(\d{2}))?$/);
   if (!m) return 0;
-  // Utilities.parseDate exists in Apps Script and respects spreadsheet timezone.
   try {
-    return Utilities.parseDate(s, tz, 'dd/MM/yyyy HH:mm:ss').getTime();
+    const normalized = `${m[1]}/${m[2]}/${m[3]} ${m[4]}:${m[5]}:${m[6] || '00'}`;
+    return Utilities.parseDate(normalized, tz, 'dd/MM/yyyy HH:mm:ss').getTime();
   } catch (err) {
     return 0;
   }
@@ -136,6 +175,19 @@ function timestampMs_(value, tz) {
 function sha256_(value) {
   const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, value, Utilities.Charset.UTF_8);
   return digest.map(b => ((b < 0 ? b + 256 : b).toString(16).padStart(2, '0'))).join('');
+}
+
+function backendNegative_(stage, fingerprint) {
+  return {
+    protocol: CATS.protocol,
+    persisted: false,
+    terminal: true,
+    reason: 'backend-error',
+    stage: stage,
+    formEditId: CATS.formEditId,
+    sheetId: CATS.sheetId,
+    fingerprint: fingerprint || '',
+  };
 }
 
 function negative_(reason, terminal, fingerprint) {
