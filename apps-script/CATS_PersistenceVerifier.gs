@@ -1,7 +1,8 @@
 /**
- * CATS Pré-curso — verificador de persistência v1.3.
+ * CATS Pré-curso — verificador de persistência v1.4.
  * Objetivo: só confirmar conclusão quando a linha correspondente estiver
- * materializada na planilha oficial. Não retorna PII nem respostas clínicas.
+ * materializada na planilha oficial. Não retorna PII, respostas clínicas nem
+ * resultado BDI-II ao navegador.
  *
  * A notificação por e-mail é idempotente e pode ser acionada por duas rotas:
  * 1) pela própria verificação positiva solicitada pelo navegador;
@@ -11,12 +12,42 @@
  */
 const CATS = Object.freeze({
   protocol: 'cats-persistence-v1',
-  runtimeVersion: '2026.09.18-r3-email-idempotent',
+  runtimeVersion: '2026.09.18-r4-bdi-email-private',
   formEditId: '1107fjdaiL42Zb0n2jNjKr0aiNNysyEADQCesdBTbD_E',
   sheetId: '1wQ0nc6TmCqqbu-ZqloIRLptO6iHqDhD00qrFLxP-fUk',
   sheetName: 'Respostas ao formulário 1',
   emailTo: 'ricmurtapsicologia@gmail.com',
   maxRowsToScan: 160,
+});
+
+const BDI_II = Object.freeze({
+  headers: Object.freeze([
+    'tristeza',
+    'pessimismo',
+    'perda de prazer',
+    'fracasso passado',
+    'sentimentos de culpa',
+    'sentimentos de punicao',
+    'auto estima',
+    'autocritica',
+    'pensamentos ou desejos suicidas',
+    'choro',
+    'agitacao',
+    'perda de interesse',
+    'indecisao',
+    'desvalorizacao',
+    'falta de energia',
+    'alteracoes no padrao de sono',
+    'irritabilidade',
+    'alteracoes de apetite',
+    'dificuldade de concentracao',
+    'cansaco ou fadiga',
+    'perda de interesse por sexo',
+  ]),
+  specialScores: Object.freeze({
+    'alteracoes no padrao de sono': Object.freeze([0, 1, 1, 2, 2, 3, 3]),
+    'alteracoes de apetite': Object.freeze([0, 1, 1, 2, 2, 3, 3]),
+  }),
 });
 
 function doGet() {
@@ -117,6 +148,8 @@ function verifyPersistence_(payload) {
       if (payload.notifyEmail === true) {
         notificationStatus = notifyPersistedResponse_(sheet, absoluteRow, 'verification');
       }
+      // O resultado BDI-II é deliberadamente excluído deste retorno. O navegador
+      // recebe apenas o estado técnico de persistência.
       return {
         protocol: CATS.protocol,
         persisted: true,
@@ -169,8 +202,9 @@ function emailSubmittedResponse(e) {
 }
 
 /**
- * Envia uma única cópia integral da linha persistida.
- * Retorna somente estado técnico; não expõe PII ao cliente do Web App.
+ * Envia uma única cópia integral da linha persistida. O BDI-II é calculado aqui,
+ * no backend, e inserido somente no e-mail administrativo. O resultado nunca é
+ * devolvido ao navegador.
  */
 function notifyPersistedResponse_(sheet, row, source) {
   const lock = LockService.getScriptLock();
@@ -197,6 +231,14 @@ function notifyPersistedResponse_(sheet, row, source) {
       .map((header, i) => ({ header: String(header || '').trim(), value: String(values[i] || '').trim() }))
       .filter(item => item.header || item.value);
 
+    const bdi = computeBdiIi_(headers, values);
+    const bdiScoreText = bdi.ok
+      ? 'BDI-II: ' + bdi.total + '/63 — intensidade ' + bdi.label + ' (' + bdi.range + ').'
+      : 'BDI-II: cálculo indisponível — ' + bdi.scored + '/21 itens reconhecidos.';
+    const bdiMeaningText = bdi.ok
+      ? 'Significado: faixa ' + bdi.label + ' de intensidade de sintomas depressivos no rastreio. Este resultado não equivale a diagnóstico clínico.'
+      : 'Significado: não gerado, pois o cálculo automático não reconheceu os 21 itens necessários.';
+
     const textBody = [
       'CATS — nova resposta do pré-curso confirmada na planilha oficial',
       '',
@@ -204,6 +246,11 @@ function notifyPersistedResponse_(sheet, row, source) {
       'Registro: ' + timestamp,
       'Linha: ' + row,
       'Origem da notificação: ' + source,
+      '',
+      'RESULTADO BDI-II — USO RESTRITO À COORDENAÇÃO',
+      bdiScoreText,
+      bdiMeaningText,
+      'Este resultado não é exibido ao respondente.',
       '',
       ...pairs.map(item => item.header + ': ' + item.value),
       '',
@@ -218,6 +265,15 @@ function notifyPersistedResponse_(sheet, row, source) {
       '</td></tr>'
     ).join('');
 
+    const bdiHtml = [
+      '<div style="margin:16px 0;padding:14px 16px;border:1px solid #d1d5db;border-radius:10px;background:#f8fafc">',
+      '<div style="font-size:12px;font-weight:700;letter-spacing:.04em;color:#475569">RESULTADO BDI-II — USO RESTRITO À COORDENAÇÃO</div>',
+      '<p style="margin:8px 0 4px"><strong>' + htmlEscape_(bdiScoreText) + '</strong></p>',
+      '<p style="margin:0;color:#475569">' + htmlEscape_(bdiMeaningText) + '</p>',
+      '<p style="margin:6px 0 0;font-size:12px;color:#64748b">Este resultado não é exibido ao respondente.</p>',
+      '</div>'
+    ].join('');
+
     const htmlBody = [
       '<div style="font-family:Arial,sans-serif;color:#1f2937">',
       '<h2 style="margin:0 0 12px">CATS — nova resposta do pré-curso</h2>',
@@ -225,6 +281,7 @@ function notifyPersistedResponse_(sheet, row, source) {
       '<p><strong>Respondente:</strong> ' + htmlEscape_(name) + '<br>',
       '<strong>Registro:</strong> ' + htmlEscape_(timestamp) + '<br>',
       '<strong>Linha:</strong> ' + row + '</p>',
+      bdiHtml,
       '<table style="border-collapse:collapse;width:100%;max-width:900px">' + rowsHtml + '</table>',
       '<p style="margin-top:16px"><a href="https://docs.google.com/spreadsheets/d/' + CATS.sheetId + '/edit">Abrir planilha oficial</a></p>',
       '</div>'
@@ -248,6 +305,98 @@ function notifyPersistedResponse_(sheet, row, source) {
   } finally {
     lock.releaseLock();
   }
+}
+
+function computeBdiIi_(headers, values) {
+  try {
+    const headerIndexes = {};
+    headers.forEach((header, i) => {
+      const key = normalizeBdiKey_(header);
+      if (key && headerIndexes[key] === undefined) headerIndexes[key] = i;
+    });
+
+    const form = FormApp.openById(CATS.formEditId);
+    const items = {};
+    form.getItems().forEach(item => {
+      const key = normalizeBdiKey_(item.getTitle());
+      if (key && items[key] === undefined) items[key] = item;
+    });
+
+    let total = 0;
+    let scored = 0;
+    const missing = [];
+
+    BDI_II.headers.forEach(key => {
+      const column = headerIndexes[key];
+      const item = items[key];
+      const selected = column === undefined ? '' : canonicalText_(values[column]);
+      const choices = item ? formChoiceValues_(item) : [];
+      if (column === undefined || !selected || !choices.length) {
+        missing.push(key);
+        return;
+      }
+
+      const selectedIndex = choices.findIndex(choice => canonicalText_(choice) === selected);
+      if (selectedIndex < 0) {
+        missing.push(key);
+        return;
+      }
+
+      const special = BDI_II.specialScores[key];
+      const points = special ? special[selectedIndex] : selectedIndex;
+      if (!Number.isInteger(points) || points < 0 || points > 3) {
+        missing.push(key);
+        return;
+      }
+
+      total += points;
+      scored += 1;
+    });
+
+    if (scored !== BDI_II.headers.length) {
+      return { ok: false, total: null, scored: scored, missing: missing };
+    }
+
+    const band = bdiIiBand_(total);
+    return {
+      ok: true,
+      total: total,
+      max: 63,
+      scored: scored,
+      label: band.label,
+      range: band.range,
+    };
+  } catch (err) {
+    console.error('[CATS BDI-II] ' + String(err && err.message || err));
+    return { ok: false, total: null, scored: 0, missing: [], error: String(err && err.message || err) };
+  }
+}
+
+function formChoiceValues_(item) {
+  switch (item.getType()) {
+    case FormApp.ItemType.MULTIPLE_CHOICE:
+      return item.asMultipleChoiceItem().getChoices().map(choice => choice.getValue());
+    case FormApp.ItemType.LIST:
+      return item.asListItem().getChoices().map(choice => choice.getValue());
+    default:
+      return [];
+  }
+}
+
+function bdiIiBand_(score) {
+  if (score <= 13) return { label: 'mínima', range: '0–13' };
+  if (score <= 19) return { label: 'leve', range: '14–19' };
+  if (score <= 28) return { label: 'moderada', range: '20–28' };
+  return { label: 'grave', range: '29–63' };
+}
+
+function normalizeBdiKey_(value) {
+  return String(value || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
 }
 
 function indexHeaders_(headers) {
