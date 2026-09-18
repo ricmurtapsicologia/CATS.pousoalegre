@@ -16,10 +16,16 @@ jobs:
     steps:
       - name: Baixar formulário público
         run: |
-          curl -fsSL --max-time 30 'https://docs.google.com/forms/d/e/1FAIpQLScVj6HESm2cWDN3sNQCaoNOtWSKini7NbSHgiTXemwlyvqAXg/viewform' -o /tmp/form.html
-          echo "BYTES=$(wc -c < /tmp/form.html)"
-          echo "HAS_EMAILADDRESS=$(grep -q 'emailAddress' /tmp/form.html && echo true || echo false)"
-          echo "HAS_500885681=$(grep -q '500885681' /tmp/form.html && echo true || echo false)"
-          echo "HAS_327261555=$(grep -q '327261555' /tmp/form.html && echo true || echo false)"
-          echo "HAS_NUNCA_ATENDI=$(grep -q 'Nunca atendi' /tmp/form.html && echo true || echo false)"
-          echo "HAS_NUNCA_PARTICIPEI=$(grep -q 'Nunca participei' /tmp/form.html && echo true || echo false)"
+          curl -fsSL --max-time 30 'https://docs.google.com/forms/d/e/1FAIpQLScVj6HESm2cWDN3sNQCaoNOtWSKini7NbSHgiTXemwlyvqAXg/viewform' -o form-public.html
+          echo "BYTES=$(wc -c < form-public.html)"
+          echo "HAS_EMAILADDRESS=$(grep -q 'emailAddress' form-public.html && echo true || echo false)"
+          echo "HAS_500885681=$(grep -q '500885681' form-public.html && echo true || echo false)"
+          echo "HAS_327261555=$(grep -q '327261555' form-public.html && echo true || echo false)"
+          echo "HAS_NUNCA_ATENDI=$(grep -q 'Nunca atendi' form-public.html && echo true || echo false)"
+          echo "HAS_NUNCA_PARTICIPEI=$(grep -q 'Nunca participei' form-public.html && echo true || echo false)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: google-forms-public-contract
+          path: form-public.html
+          retention-days: 1
