@@ -1,27 +1,30 @@
 /**
- * CATS Pré-curso — verificador de persistência v1.2.
+ * CATS Pré-curso — verificador de persistência v1.3.
  * Objetivo: só confirmar conclusão quando a linha correspondente estiver
  * materializada na planilha oficial. Não retorna PII nem respostas clínicas.
  *
- * Também pode enviar, por gatilho instalável da planilha, uma cópia integral
- * de cada nova resposta efetivamente persistida para o e-mail do coordenador.
+ * A notificação por e-mail é idempotente e pode ser acionada por duas rotas:
+ * 1) pela própria verificação positiva solicitada pelo navegador;
+ * 2) pelo gatilho instalável onFormSubmit da planilha, como redundância.
  *
  * Deploy: Web App | executar como proprietário | acesso: qualquer pessoa.
  */
 const CATS = Object.freeze({
   protocol: 'cats-persistence-v1',
+  runtimeVersion: '2026.09.18-r3-email-idempotent',
   formEditId: '1107fjdaiL42Zb0n2jNjKr0aiNNysyEADQCesdBTbD_E',
   sheetId: '1wQ0nc6TmCqqbu-ZqloIRLptO6iHqDhD00qrFLxP-fUk',
   sheetName: 'Respostas ao formulário 1',
   emailTo: 'ricmurtapsicologia@gmail.com',
   maxRowsToScan: 160,
-  clockSkewMs: 2 * 60 * 1000,
 });
 
 function doGet() {
   return json_({
     protocol: CATS.protocol,
     status: 'ready',
+    runtimeVersion: CATS.runtimeVersion,
+    emailDeliveryMode: 'verification-plus-trigger-idempotent',
     formEditId: CATS.formEditId,
     sheetId: CATS.sheetId,
   });
@@ -93,15 +96,13 @@ function verifyPersistence_(payload) {
     return backendNegative_('read-response-rows', payload.fingerprint);
   }
 
-  const submittedAt = Number(payload.submittedAtEpochMs || 0);
-  const lowerBound = submittedAt > 0 ? submittedAt - CATS.clockSkewMs : 0;
   const tz = ss.getSpreadsheetTimeZone() || Session.getScriptTimeZone() || 'America/Sao_Paulo';
+  const expectedFingerprint = String(payload.fingerprint).toLowerCase();
 
+  // O relógio do dispositivo NÃO participa da exclusão de linhas. A busca é
+  // limitada às respostas recentes e a identidade é validada pelo fingerprint.
   for (let i = rows.length - 1; i >= 0; i--) {
     const row = rows[i];
-    const ts = timestampMs_(row[idx.timestamp], tz);
-    if (lowerBound && ts && ts < lowerBound) break;
-
     const canonical = [
       canonicalText_(row[idx.name]).toUpperCase(),
       canonicalText_(row[idx.email]).toLowerCase(),
@@ -110,11 +111,18 @@ function verifyPersistence_(payload) {
     ].join('|');
 
     const fingerprint = sha256_(canonical);
-    if (fingerprint === String(payload.fingerprint).toLowerCase()) {
+    if (fingerprint === expectedFingerprint) {
+      const absoluteRow = startRow + i;
+      let notificationStatus = 'not-requested';
+      if (payload.notifyEmail === true) {
+        notificationStatus = notifyPersistedResponse_(sheet, absoluteRow, 'verification');
+      }
       return {
         protocol: CATS.protocol,
         persisted: true,
         terminal: true,
+        runtimeVersion: CATS.runtimeVersion,
+        emailNotification: notificationStatus,
         formEditId: CATS.formEditId,
         sheetId: CATS.sheetId,
         fingerprint: fingerprint,
@@ -126,10 +134,9 @@ function verifyPersistence_(payload) {
 }
 
 /**
- * Executa UMA vez no editor do Apps Script para criar o gatilho instalável.
- * O gatilho dispara somente quando uma nova linha de resposta é efetivamente
- * gravada na planilha oficial; portanto, o e-mail não é disparado por um
- * simples POST ou pela tela de sucesso do navegador.
+ * Executa UMA vez no editor do Apps Script para criar o gatilho redundante.
+ * A rota principal de notificação é a confirmação positiva do verificador;
+ * este gatilho garante notificação mesmo se o participante fechar a página.
  */
 function installEmailTrigger() {
   const handler = 'emailSubmittedResponse';
@@ -142,12 +149,12 @@ function installEmailTrigger() {
     .onFormSubmit()
     .create();
 
-  return 'Gatilho de e-mail instalado para ' + CATS.emailTo;
+  return 'Gatilho redundante de e-mail instalado para ' + CATS.emailTo;
 }
 
 /**
- * Envia uma cópia integral da resposta somente após a linha existir na Sheet.
- * Esta função deve ser chamada pelo gatilho instalável criado acima.
+ * Handler do gatilho instalável. Compartilha a mesma chave idempotente usada
+ * pela rota de verificação, portanto nunca deve duplicar uma notificação já enviada.
  */
 function emailSubmittedResponse(e) {
   if (!e || !e.range) return;
@@ -158,57 +165,89 @@ function emailSubmittedResponse(e) {
 
   const row = e.range.getRow();
   if (row < 2) return;
+  notifyPersistedResponse_(sheet, row, 'sheet-trigger');
+}
 
-  const lastCol = sheet.getLastColumn();
-  const headers = sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
-  const values = sheet.getRange(row, 1, 1, lastCol).getDisplayValues()[0];
-  const idx = indexHeaders_(headers);
+/**
+ * Envia uma única cópia integral da linha persistida.
+ * Retorna somente estado técnico; não expõe PII ao cliente do Web App.
+ */
+function notifyPersistedResponse_(sheet, row, source) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return 'busy';
 
-  const timestamp = idx.timestamp >= 0 ? values[idx.timestamp] : '';
-  const name = idx.name >= 0 ? values[idx.name] : 'Respondente';
-  const pairs = headers
-    .map((header, i) => ({ header: String(header || '').trim(), value: String(values[i] || '').trim() }))
-    .filter(item => item.header || item.value);
+  try {
+    const lastCol = sheet.getLastColumn();
+    const headers = sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
+    const values = sheet.getRange(row, 1, 1, lastCol).getDisplayValues()[0];
+    const idx = indexHeaders_(headers);
+    const timestamp = idx.timestamp >= 0 ? String(values[idx.timestamp] || '') : '';
+    const key = 'cats-email:' + sha256_([
+      CATS.sheetId,
+      sheet.getSheetId(),
+      row,
+      timestamp,
+    ].join('|'));
 
-  const textBody = [
-    'CATS — nova resposta do pré-curso confirmada na planilha oficial',
-    '',
-    'Respondente: ' + name,
-    'Registro: ' + timestamp,
-    'Linha: ' + row,
-    '',
-    ...pairs.map(item => item.header + ': ' + item.value),
-    '',
-    'Planilha oficial: https://docs.google.com/spreadsheets/d/' + CATS.sheetId + '/edit'
-  ].join('\n');
+    const props = PropertiesService.getScriptProperties();
+    if (props.getProperty(key)) return 'already-sent';
 
-  const rowsHtml = pairs.map(item =>
-    '<tr><th style="text-align:left;vertical-align:top;padding:6px 10px;border-bottom:1px solid #ddd;background:#f7f7f7">' +
-    htmlEscape_(item.header) +
-    '</th><td style="vertical-align:top;padding:6px 10px;border-bottom:1px solid #ddd">' +
-    htmlEscape_(item.value).replace(/\n/g, '<br>') +
-    '</td></tr>'
-  ).join('');
+    const name = idx.name >= 0 ? values[idx.name] : 'Respondente';
+    const pairs = headers
+      .map((header, i) => ({ header: String(header || '').trim(), value: String(values[i] || '').trim() }))
+      .filter(item => item.header || item.value);
 
-  const htmlBody = [
-    '<div style="font-family:Arial,sans-serif;color:#1f2937">',
-    '<h2 style="margin:0 0 12px">CATS — nova resposta do pré-curso</h2>',
-    '<p><strong>Persistência confirmada na planilha oficial.</strong></p>',
-    '<p><strong>Respondente:</strong> ' + htmlEscape_(name) + '<br>',
-    '<strong>Registro:</strong> ' + htmlEscape_(timestamp) + '<br>',
-    '<strong>Linha:</strong> ' + row + '</p>',
-    '<table style="border-collapse:collapse;width:100%;max-width:900px">' + rowsHtml + '</table>',
-    '<p style="margin-top:16px"><a href="https://docs.google.com/spreadsheets/d/' + CATS.sheetId + '/edit">Abrir planilha oficial</a></p>',
-    '</div>'
-  ].join('');
+    const textBody = [
+      'CATS — nova resposta do pré-curso confirmada na planilha oficial',
+      '',
+      'Respondente: ' + name,
+      'Registro: ' + timestamp,
+      'Linha: ' + row,
+      'Origem da notificação: ' + source,
+      '',
+      ...pairs.map(item => item.header + ': ' + item.value),
+      '',
+      'Planilha oficial: https://docs.google.com/spreadsheets/d/' + CATS.sheetId + '/edit'
+    ].join('\n');
 
-  MailApp.sendEmail({
-    to: CATS.emailTo,
-    subject: 'CATS Pré-curso | resposta confirmada | ' + name,
-    body: textBody,
-    htmlBody: htmlBody,
-    name: 'CATS Pré-curso'
-  });
+    const rowsHtml = pairs.map(item =>
+      '<tr><th style="text-align:left;vertical-align:top;padding:6px 10px;border-bottom:1px solid #ddd;background:#f7f7f7">' +
+      htmlEscape_(item.header) +
+      '</th><td style="vertical-align:top;padding:6px 10px;border-bottom:1px solid #ddd">' +
+      htmlEscape_(item.value).replace(/\n/g, '<br>') +
+      '</td></tr>'
+    ).join('');
+
+    const htmlBody = [
+      '<div style="font-family:Arial,sans-serif;color:#1f2937">',
+      '<h2 style="margin:0 0 12px">CATS — nova resposta do pré-curso</h2>',
+      '<p><strong>Persistência confirmada na planilha oficial.</strong></p>',
+      '<p><strong>Respondente:</strong> ' + htmlEscape_(name) + '<br>',
+      '<strong>Registro:</strong> ' + htmlEscape_(timestamp) + '<br>',
+      '<strong>Linha:</strong> ' + row + '</p>',
+      '<table style="border-collapse:collapse;width:100%;max-width:900px">' + rowsHtml + '</table>',
+      '<p style="margin-top:16px"><a href="https://docs.google.com/spreadsheets/d/' + CATS.sheetId + '/edit">Abrir planilha oficial</a></p>',
+      '</div>'
+    ].join('');
+
+    MailApp.sendEmail({
+      to: CATS.emailTo,
+      subject: 'CATS Pré-curso | resposta confirmada | ' + name,
+      body: textBody,
+      htmlBody: htmlBody,
+      name: 'CATS Pré-curso'
+    });
+
+    // Só grava o marcador depois de MailApp aceitar o envio. Se houver exceção,
+    // uma próxima verificação ou o gatilho poderá tentar novamente.
+    props.setProperty(key, new Date().toISOString());
+    return 'sent';
+  } catch (err) {
+    console.error('[CATS email] ' + String(err && err.message || err));
+    return 'error';
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function indexHeaders_(headers) {
@@ -245,19 +284,6 @@ function canonicalDate_(value, tz) {
   return s;
 }
 
-function timestampMs_(value, tz) {
-  if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime())) return value.getTime();
-  const s = canonicalText_(value);
-  const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})(?::(\d{2}))?$/);
-  if (!m) return 0;
-  try {
-    const normalized = `${m[1]}/${m[2]}/${m[3]} ${m[4]}:${m[5]}:${m[6] || '00'}`;
-    return Utilities.parseDate(normalized, tz, 'dd/MM/yyyy HH:mm:ss').getTime();
-  } catch (err) {
-    return 0;
-  }
-}
-
 function sha256_(value) {
   const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, value, Utilities.Charset.UTF_8);
   return digest.map(b => ((b < 0 ? b + 256 : b).toString(16).padStart(2, '0'))).join('');
@@ -279,6 +305,7 @@ function backendNegative_(stage, fingerprint) {
     terminal: true,
     reason: 'backend-error',
     stage: stage,
+    runtimeVersion: CATS.runtimeVersion,
     formEditId: CATS.formEditId,
     sheetId: CATS.sheetId,
     fingerprint: fingerprint || '',
@@ -291,6 +318,7 @@ function negative_(reason, terminal, fingerprint) {
     persisted: false,
     terminal: !!terminal,
     reason: reason,
+    runtimeVersion: CATS.runtimeVersion,
     formEditId: CATS.formEditId,
     sheetId: CATS.sheetId,
     fingerprint: fingerprint || '',
