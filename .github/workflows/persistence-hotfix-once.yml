@@ -1,4 +1,4 @@
-name: CATS Pré-curso — Cache-bust hotfix (one-shot)
+name: CATS Pré-curso — Release final auditada (one-shot)
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  cache-bust:
+  release-precurso:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -19,31 +19,58 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Forçar carregamento do hotfix r9
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          p = Path('precurso.html')
-          s = p.read_text(encoding='utf-8')
-          old = s
-          s = s.replace('persistence-config.js?v=20260918-1', 'persistence-config.js?v=20260918-r9-auto')
-          s = s.replace('2026.09.18-r7-persistence', '2026.09.18-r9-auto')
-          if s == old:
-              raise SystemExit('Nenhuma alteração aplicada: tokens esperados não encontrados')
-          p.write_text(s, encoding='utf-8')
-          PY
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
 
-      - name: Validar referências do build
+      - name: AS-IS e pinpoint — arquivos canônicos
         run: |
-          grep -q 'persistence-config.js?v=20260918-r9-auto' precurso.html
-          grep -q '2026.09.18-r9-auto' precurso.html
-          grep -q "formResponse" precurso.html
-          grep -q "RESPONSE_SHEET_ID" precurso.html
+          test -s precurso.html
+          test -s legacy.html
+          test -s persistence-config.js
+          test -s apps-script/CATS_PersistenceVerifier.gs
+          test -s docs/PRECURSO_E2E_FINAL_SPEC.md
+          grep -q 'formResponse' precurso.html
+          grep -q '1wQ0nc6TmCqqbu-ZqloIRLptO6iHqDhD00qrFLxP-fUk' precurso.html
 
-      - name: Publicar cache-bust
+      - name: Hotfix — persistência segura e automática
+        run: python scripts/precurso_submission_hardening.py
+
+      - name: Auditoria 30/30
+        run: python scripts/qa_30_30.py
+
+      - name: Auditoria 90/90
+        run: python scripts/qa_90_90.py
+
+      - name: Gates finais 6/6 — pré-curso
+        run: python scripts/qa_6_6_precurso.py
+
+      - name: QEP — 24 dimensões / 397 slots canônicos
+        run: python scripts/qep_precurso_gate.py
+
+      - name: Instalar Playwright
         run: |
-          git config user.name 'CATS Hotfix Bot'
+          pip install playwright
+          playwright install --with-deps chromium
+
+      - name: Servir release candidata
+        run: |
+          python -m http.server 8765 --bind 127.0.0.1 > /tmp/cats-pre-http.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8765/precurso.html >/dev/null && exit 0; sleep 0.5; done
+          cat /tmp/cats-pre-http.log
+          exit 1
+
+      - name: E2E dedicado — formulário e persistência sem falso positivo
+        run: python scripts/e2e_precurso.py http://127.0.0.1:8765/
+
+      - name: Publicar somente após todos os gates verdes
+        run: |
+          git config user.name 'CATS Release Bot'
           git config user.email 'actions@users.noreply.github.com'
-          git add precurso.html
-          git commit -m 'Hotfix: cache-bust do verificador automático do pré-curso'
-          git push origin HEAD:main
+          git add precurso.html legacy.html
+          if git diff --cached --quiet; then
+            echo 'Release já materializada; nenhuma alteração necessária.'
+          else
+            git commit -m 'Release: pré-curso r10 com persistência auditada'
+            git push origin HEAD:main
+          fi
