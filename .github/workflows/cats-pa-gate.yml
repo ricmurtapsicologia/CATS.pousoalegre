@@ -7,8 +7,13 @@ on:
       - '.github/workflows/cats-pa-gate.yml'
       - 'index.html'
       - 'precurso.html'
+      - 'legacy.html'
+      - 'persistence-config.js'
+      - 'apps-script/CATS_PersistenceVerifier.gs'
       - 'scripts/finalize_theory_surface.py'
       - 'scripts/performance_hotfix.py'
+      - 'scripts/precurso_submission_hardening.py'
+      - 'scripts/qep_precurso_gate.py'
       - 'scripts/qa_30_30.py'
       - 'scripts/qa_90_90.py'
       - 'scripts/e2e_portal.py'
@@ -38,6 +43,8 @@ jobs:
         run: |
           test -s index.html
           test -s precurso.html
+          test -s legacy.html
+          test -s persistence-config.js
 
       - name: Sanear superfície final para oito aulas teóricas
         run: python scripts/finalize_theory_surface.py
@@ -45,11 +52,17 @@ jobs:
       - name: Aplicar hotfix persistente de performance
         run: python scripts/performance_hotfix.py
 
+      - name: Hotfix — persistência segura do pré-curso
+        run: python scripts/precurso_submission_hardening.py
+
       - name: Auditoria 30/30 — técnica e institucional
         run: python scripts/qa_30_30.py
 
       - name: Auditoria 90/90 — editorial e experiência
         run: python scripts/qa_90_90.py
+
+      - name: QEP — 24 dimensões / 397 slots canônicos
+        run: python scripts/qep_precurso_gate.py
 
       - name: Instalar navegador de teste
         run: |
@@ -66,7 +79,7 @@ jobs:
       - name: E2E — autenticação, aulas, recursos, pré-curso e mobile
         run: python scripts/e2e_portal.py http://127.0.0.1:8765/
 
-      - name: Publicar somente após os dois gates e E2E aprovados
+      - name: Publicar somente após 30/30, 90/90, QEP e E2E aprovados
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
@@ -74,6 +87,6 @@ jobs:
           if git diff --cached --quiet; then
             echo 'Nenhuma alteração de artefato.'
           else
-            git commit -m 'Publica VIII CATS Pouso Alegre após auditorias 30/30 e 90/90'
+            git commit -m 'Publica VIII CATS Pouso Alegre após 30/30, 90/90, QEP e E2E'
             git push origin HEAD:main
           fi
