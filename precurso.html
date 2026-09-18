@@ -58,9 +58,9 @@
   const VERIFY_POLL_MS=1200;
   const VERIFY_TIMEOUT_MS=18000;
   const HERO='https://i.pinimg.com/736x/29/42/2a/29422ad8bed8166ef119bcef4792218f.jpg';
-  const POSTOS=['Cel','Ten Cel','Maj','Cap','1º Ten','2º Ten','Asp-a-Of.','Cad','Subten','1º Sgt','2º Sgt','3º Sgt','Cb','Sd'];
+  const POSTOS=['Cel','Ten-Cel','Maj','Cap','1º Ten','2º Ten','Asp-a-Of.','SubTen','1º Sgt','2º Sgt','3º Sgt','Cb','Sd','Civil'];
   const TEMPO=['até 5 anos.','de 5 a 10 anos.','De 10 a 15 anos.','De 15 a 20 anos.','de 20 a 25 anos.','Mais de 25 anos de serviço.'];
-  const OCORRENCIAS=['Nunca participei.','Sim, de 01 a 05 ocorrências','Sim, de 06 a 10 ocorrências','Sim, em mais de 11 ocorrências'];
+  const OCORRENCIAS=['Nunca atendi.','Sim, de 01 a 05 ocorrências.','Sim, de 06 a 10 ocorrências.','Sim, em mais de 11 ocorrências'];
   const PRESENCIOU=['Nunca presenciei.','Sim, de 01 a 05 suicídios completos.','Sim, de 06 a 10 suicídios completos.','Sim, em mais de 11 suicídios completos.'];
 
   const frame=document.getElementById('app');
@@ -160,50 +160,52 @@
 
     const header=doc.querySelector('header.hero');
     if(header){
-      header.innerHTML=`<div class="shell"><div class="hero-card"><div class="course-brand"><span class="course-star" aria-hidden="true">★</span><span>CBMMG • 7ª Cia Ind - Pouso Alegre</span></div><div class="hero-copy"><span class="hero-kicker">Boas-vindas • VIII Edição</span><h1>Curso de Atendimento a Tentativas de <span>Suicídio</span></h1><div class="hero-message"><p class="hero-welcome">Caros abordadores e abordadoras, sejam bem-vindos.</p><p>Antes de começarmos, reserve alguns minutos para preencher o formulário a seguir. Suas respostas nos ajudam a conhecer melhor a turma e a preparar uma experiência de aprendizagem mais direcionada e relevante.</p><p class="hero-required"><strong>Preenchimento obrigatório</strong></p></div><div class="hero-signature"><span>Cordialmente,</span><strong>Lucas Antônio de Oliveira, Capitão BM</strong><span class="role">Coordenador do CATS</span></div></div></div></div>`;
+      header.innerHTML=`<div class="shell"><div class="hero-card"><div class="course-brand"><span class="course-star">★</span><span>CORPO DE BOMBEIROS MILITAR DE MINAS GERAIS</span></div><div class="hero-copy"><span class="hero-kicker">VIII CATS • 2026</span><h1>Bem-vindo(a) ao <span>Curso de Atendimento a Tentativas de Suicídio</span></h1><div class="hero-message"><p class="hero-welcome">É uma satisfação recebê-lo(a) no VIII CATS.</p><p>Durante esta formação, você será convidado(a) a ampliar conhecimentos, refletir sobre sua prática e desenvolver recursos técnicos para uma atuação mais segura, qualificada e humanizada.</p><p>Antes do início do curso, precisamos conhecer um pouco mais sobre você. As informações abaixo apoiarão o planejamento das atividades e o acompanhamento da turma.</p><p class="hero-required"><strong>Preenchimento obrigatório</strong>&nbsp;• reserve alguns minutos e responda com atenção.</p></div><div class="hero-signature"><strong>Major BM Richelmy Murta Pinto</strong><span class="role">Coordenação • VIII CATS 2026</span></div></div></div></div>`;
     }
 
-    const footer=doc.querySelector('footer.footer');
+    const footer=doc.querySelector('.footer');
     if(footer){
-      footer.className='shell footer cats-footer';
-      footer.innerHTML=`<div class="cats-footer-panel"><div class="cats-footer-brand"><span aria-hidden="true">★</span><span>CBMMG • CATS 2026</span></div><p class="cats-footer-copy"><strong>© 2026 CBMMG — Equipe de Coordenação do CATS.</strong><br>Todos os direitos reservados.</p></div>`;
+      footer.classList.add('cats-footer');
+      footer.innerHTML=`<div class="shell"><div class="cats-footer-panel"><div class="cats-footer-brand"><span>★</span><span>VIII CATS • 2026</span></div><p class="cats-footer-copy"><strong>CBMMG</strong> • Curso de Atendimento a Tentativas de Suicídio</p></div></div>`;
     }
   }
 
   function syncHeight(doc){
-    const height=Math.max(doc.documentElement.scrollHeight,doc.body?.scrollHeight||0);
-    if(height>0)frame.style.height=`${height}px`;
+    const h=Math.max(doc.documentElement.scrollHeight,doc.body.scrollHeight,window.innerHeight);
+    frame.style.height=`${h}px`;
   }
 
   function scrollToProgress(doc){
-    const progress=doc.querySelector('.progress-wrap');
-    const y=frame.offsetTop+(progress?.offsetTop||0);
-    window.scrollTo({top:y,behavior:'smooth'});
+    const y=frame.offsetTop+(doc.querySelector('.progress-wrap')?.offsetTop||0);
+    window.scrollTo({top:Math.max(0,y),behavior:'smooth'});
   }
 
+  function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 
-  const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-
-  function canonicalText(value){
-    return String(value??'').trim().replace(/\s+/g,' ');
+  function normalizedText(value){
+    return String(value??'').normalize('NFKC').replace(/\s+/g,' ').trim();
   }
 
-  async function sha256Hex(value){
-    const bytes=new TextEncoder().encode(value);
-    const digest=await crypto.subtle.digest('SHA-256',bytes);
-    return [...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  function cpfDigits(value){return String(value??'').replace(/\D/g,'');}
+
+  function canonicalDate(value){
+    const raw=String(value??'').trim();
+    const m=raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return m?`${m[3]}/${m[2]}/${m[1]}`:raw;
   }
 
-  function fieldValue(form,name){
-    return form.querySelector(`[name="${name}"]`)?.value??'';
+  async function sha256Hex(text){
+    const bytes=new TextEncoder().encode(text);
+    const hash=await crypto.subtle.digest('SHA-256',bytes);
+    return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join('');
   }
 
   async function buildPersistencePayload(form,submittedAtEpochMs){
     const canonical=[
-      canonicalText(fieldValue(form,'entry.1067284683')).toUpperCase(),
-      canonicalText(fieldValue(form,'entry.1556369182')).toLowerCase(),
-      canonicalText(fieldValue(form,'entry.426148251')).replace(/\D/g,''),
-      canonicalText(fieldValue(form,'entry.2092238618'))
+      normalizedText(form.elements['entry.1067284683']?.value).toUpperCase(),
+      normalizedText(form.elements['entry.1556369182']?.value).toLowerCase(),
+      cpfDigits(form.elements['entry.426148251']?.value),
+      canonicalDate(form.elements['entry.2092238618']?.value)
     ].join('|');
     return {
       protocol:'cats-persistence-v1',
@@ -216,37 +218,22 @@
   }
 
   async function callPersistenceVerifier(payload){
-    if(typeof window.__CATS_PERSISTENCE_VERIFY__==='function'){
-      return await window.__CATS_PERSISTENCE_VERIFY__(payload);
-    }
-    const endpoint=String(window.CATS_PERSISTENCE_VERIFY_URL||'').trim();
-    if(!endpoint){
-      return {persisted:false,terminal:true,reason:'verifier-not-configured'};
-    }
-    try{
-      const response=await fetch(endpoint,{
-        method:'POST',
-        headers:{'Content-Type':'text/plain;charset=UTF-8'},
-        body:JSON.stringify(payload),
-        cache:'no-store',
-        credentials:'omit',
-        redirect:'follow'
-      });
-      if(!response.ok){
-        return {persisted:false,terminal:false,reason:`http-${response.status}`};
-      }
-      return await response.json();
-    }catch(error){
-      console.warn('[CATS persistence] verifier request failed',error);
-      return {persisted:false,terminal:false,reason:'network-error'};
-    }
+    const injected=window.__CATS_PERSISTENCE_VERIFY__;
+    if(typeof injected==='function')return await injected(payload);
+    const endpoint=window.CATS_PERSISTENCE_VERIFY_URL;
+    if(!endpoint)return {persisted:false,terminal:false,reason:'verifier-not-configured'};
+    const response=await fetch(endpoint,{
+      method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify(payload),cache:'no-store',credentials:'omit',redirect:'follow'
+    });
+    if(!response.ok)return {persisted:false,terminal:false,reason:`http-${response.status}`};
+    return await response.json();
   }
 
   function isValidPersistenceConfirmation(result,payload){
     return result?.persisted===true
-      && result?.protocol==='cats-persistence-v1'
-      && result?.sheetId===RESPONSE_SHEET_ID
-      && result?.formEditId===OFFICIAL_FORM_EDIT_ID
+      && result?.protocol===payload.protocol
+      && result?.formEditId===payload.formEditId
+      && result?.sheetId===payload.sheetId
       && result?.fingerprint===payload.fingerprint;
   }
 
@@ -359,26 +346,17 @@
     form.addEventListener('submit',event=>{
       if(event.defaultPrevented)return;
       const submittedAtEpochMs=Date.now();
-      state={
-        submittedAtEpochMs,
-        payloadPromise:buildPersistencePayload(form,submittedAtEpochMs),
-        verifying:false,
-        confirmed:false
-      };
+      state={submittedAtEpochMs,payloadPromise:buildPersistencePayload(form,submittedAtEpochMs),verifying:false,confirmed:false};
       setPending('Enviando ao Google Forms. Aguardando confirmação da planilha oficial...');
     });
 
     responseFrame.addEventListener('load',()=>{
       if(!state||state.confirmed)return;
-      // legacy.html trata qualquer load do iframe como sucesso. Este hotfix
-      // reverte essa sinalização antes da pintura e só libera o sucesso
-      // depois da confirmação independente da planilha.
       keepUnconfirmedVisible();
       runVerification();
     });
 
     verifyAgain.addEventListener('click',()=>runVerification());
-
     return {getState:()=>state,runVerification};
   }
 
@@ -441,9 +419,7 @@
         });
       });
 
-      doc.querySelectorAll('[data-next],[data-prev]').forEach(btn=>btn.addEventListener('click',()=>{
-        setTimeout(()=>{syncHeight(doc);scrollToProgress(doc)},30);
-      }));
+      doc.querySelectorAll('[data-next],[data-prev]').forEach(btn=>btn.addEventListener('click',()=>{setTimeout(()=>{syncHeight(doc);scrollToProgress(doc)},30);}));
 
       if(success){
         new MutationObserver(()=>{
