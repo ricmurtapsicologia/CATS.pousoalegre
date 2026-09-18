@@ -472,9 +472,10 @@
 
   $('#google-response').addEventListener('load', () => {
     if(!submitted) return;
-    $('#catsForm').style.display = 'none';
-    $('#success').classList.add('show');
-    window.scrollTo({top: 0, behavior: 'smooth'});
+    // O load do iframe confirma apenas que o Google respondeu ao POST.
+    // Sucesso só pode ser exibido após confirmação independente da linha
+    // materializada na planilha oficial, feita por precurso.html.
+    $('#submitBtn').textContent = 'Confirmando gravação...';
   });
 })();
 </script>
