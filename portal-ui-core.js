@@ -3,6 +3,7 @@
 
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+  const ONBOARDING_KEY = "cats_pa_onboarded_v2";
 
   function moveLogoutIntoNav() {
     const logout = document.getElementById("catsAuthLogout");
@@ -20,6 +21,58 @@
     });
     observer.observe(document.body, { childList: true, subtree: true });
     setTimeout(() => observer.disconnect(), 10000);
+  }
+
+  function setupOnboarding() {
+    const panel = $("#onboard");
+    if (!panel || panel.dataset.catsOnboardingBound === "1") return;
+    panel.dataset.catsOnboardingBound = "1";
+
+    const skip = $("#ob-skip");
+    const next = $("#ob-next");
+
+    const isCompleted = () => {
+      try {
+        return localStorage.getItem(ONBOARDING_KEY) === "1";
+      } catch {
+        return false;
+      }
+    };
+
+    const hide = ({ persist = true } = {}) => {
+      if (persist) {
+        try { localStorage.setItem(ONBOARDING_KEY, "1"); } catch {}
+      }
+      panel.hidden = true;
+      panel.setAttribute("aria-hidden", "true");
+      panel.style.setProperty("display", "none", "important");
+      document.body.style.overflow = "";
+    };
+
+    const dismiss = event => {
+      event?.preventDefault?.();
+      hide({ persist: true });
+    };
+
+    skip?.addEventListener("click", dismiss, true);
+    next?.addEventListener("click", dismiss, true);
+
+    // O código legado do index pode tentar reabrir o overlay após o load.
+    // Se o usuário já concluiu o onboarding, esta guarda mantém o estado fechado.
+    const enforceCompletedState = () => {
+      if (!isCompleted()) return;
+      if (!panel.hidden || getComputedStyle(panel).display !== "none") {
+        hide({ persist: false });
+      }
+    };
+
+    const observer = new MutationObserver(enforceCompletedState);
+    observer.observe(panel, {
+      attributes: true,
+      attributeFilter: ["style", "hidden", "aria-hidden"],
+    });
+
+    if (isCompleted()) hide({ persist: false });
   }
 
   function setupMobileNav() {
@@ -128,6 +181,7 @@
   }
 
   function init() {
+    setupOnboarding();
     setupMobileNav();
     setupCourseInfo();
     setupCourseCards();
