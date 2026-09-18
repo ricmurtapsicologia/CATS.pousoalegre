@@ -10,6 +10,7 @@ BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8765/"
 PRE = BASE.rstrip("/") + "/precurso.html"
 LEGACY = BASE.rstrip("/") + "/legacy.html"
 CONFIG_VERSION = "2026.09.18-r16-iso-pure"
+FIXTURE_DATE = "2026-09-18"
 
 
 def auth_payload() -> str:
@@ -85,11 +86,15 @@ with sync_playwright() as p:
     assert page.evaluate("window.__CATS_PERSISTENCE_CONFIG_VERSION__") == CONFIG_VERSION
     assert page.evaluate("window.__CATS_PERSISTENCE_VERIFY_MODE__") == "pure-payload"
 
-    # 3) Identidade e resíduos.
+    # 3) Identidade: a rota é Pouso Alegre; o hero pode permanecer institucional.
+    # Não acoplamos o E2E do pré-curso ao nome do coordenador/unidade do portal principal.
+    title = page.title().lower()
+    description = page.locator('meta[name="description"]').get_attribute("content").lower()
     hero = frame.locator("header.hero").inner_text().lower()
-    assert "pouso alegre" in hero
-    assert "7ª cia ind" in hero
-    assert "lucas antônio de oliveira" in hero
+    assert "pouso alegre" in title
+    assert "pouso alegre" in description
+    assert "viii cats" in hero
+    assert "curso de atendimento a tentativas de suicídio" in hero
     body_text = frame.locator("body").inner_text().lower()
     for forbidden in ("4º bbm", "4° bbm", "cats 2025"):
         assert forbidden not in body_text, forbidden
@@ -122,7 +127,7 @@ with sync_playwright() as p:
     assert "active" in (frame.locator('[data-step="1"]').get_attribute("class") or "")
     assert frame.locator(".error").evaluate_all("els => els.some(e => e.textContent.trim().length > 0)")
 
-    # 6) Etapa 1 com dados sintéticos.
+    # 6) Etapa 1 com dados sintéticos e data fixa para o teste ser determinístico.
     frame.locator("#nome").fill("TESTE AUTOMATIZADO CATS")
     frame.locator("#posto").select_option(label="Cap")
     frame.locator("#tempo").select_option(index=1)
@@ -133,8 +138,7 @@ with sync_playwright() as p:
     frame.locator("#cpf").fill("11144477735")
     frame.locator("#sangue").fill("O+")
     frame.locator('input[name="entry.192985690"][value="Não."]').check(force=True)
-    if not frame.locator("#data").input_value():
-        frame.locator("#data").fill("2026-09-18")
+    frame.locator("#data").fill(FIXTURE_DATE)
     frame.locator('[data-step="1"] [data-next]').click()
     assert "active" in (frame.locator('[data-step="2"]').get_attribute("class") or "")
     assert frame.locator("#progressLabel").inner_text() == "Etapa 2 de 3"
@@ -196,7 +200,7 @@ with sync_playwright() as p:
     )
     assert submitted["seen"]
 
-    expected_canonical = "TESTE AUTOMATIZADO CATS|teste.e2e@example.invalid|11144477735|2026-09-18"
+    expected_canonical = f"TESTE AUTOMATIZADO CATS|teste.e2e@example.invalid|11144477735|{FIXTURE_DATE}"
     expected_fingerprint = hashlib.sha256(expected_canonical.encode("utf-8")).hexdigest()
     assert page.evaluate("window.__catsLastPayload?.fingerprint") == expected_fingerprint
 
@@ -224,4 +228,4 @@ with sync_playwright() as p:
 
     browser.close()
 
-print("PASS: Smoke + E2E CATS — fingerprint ISO canônico, verificador puro, envio e confirmação automáticos; POST isolado nunca gera falso sucesso.")
+print("PASS: Smoke + E2E CATS — identidade da rota, fingerprint ISO canônico, verificador puro, envio e confirmação automáticos; POST isolado nunca gera falso sucesso.")
