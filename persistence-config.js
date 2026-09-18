@@ -6,62 +6,18 @@
   const ENDPOINT = 'https://script.google.com/macros/s/AKfycbzOINm3ehG2ojEuSyFSYIuOfKciTGTg37GZ4lvC_AKfV0_00nU4GU8uxFwOpgefPTE/exec';
   const AUTO_RETRY_DELAY_MS = 4000;
   const MAX_AUTO_RETRIES = 20;
-  const CONTRACT_VERSION = '2026.09.18-r14-fingerprint-propagated';
+  const CONTRACT_VERSION = '2026.09.18-r16-iso-pure';
 
   window.CATS_PERSISTENCE_VERIFY_URL = ENDPOINT;
   window.__CATS_PERSISTENCE_CONFIG_VERSION__ = CONTRACT_VERSION;
+  window.__CATS_PERSISTENCE_VERIFY_MODE__ = 'pure-payload';
 
-  function normalizedText(value) {
-    return String(value ?? '').normalize('NFKC').replace(/\s+/g, ' ').trim();
-  }
-
-  function canonicalIsoDate(value) {
-    const raw = String(value ?? '').trim();
-    let m = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (m) return raw;
-    m = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    if (m) return `${m[3]}-${m[2]}-${m[1]}`;
-    return raw;
-  }
-
-  async function sha256Hex(text) {
-    const bytes = new TextEncoder().encode(text);
-    const hash = await crypto.subtle.digest('SHA-256', bytes);
-    return [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, '0')).join('');
-  }
-
-  // Recalcula o fingerprint usando exatamente o mesmo contrato canônico do
-  // backend/planilha: nome | melhor e-mail | CPF numérico | data ISO yyyy-mm-dd.
-  async function fingerprintFromLiveForm() {
-    try {
-      const frame = document.getElementById('app');
-      const form = frame?.contentDocument?.getElementById('catsForm');
-      if (!form) return '';
-      const canonical = [
-        normalizedText(form.elements['entry.1067284683']?.value).toUpperCase(),
-        normalizedText(form.elements['entry.1556369182']?.value).toLowerCase(),
-        String(form.elements['entry.426148251']?.value ?? '').replace(/\D/g, ''),
-        canonicalIsoDate(form.elements['entry.2092238618']?.value),
-      ].join('|');
-      if (!canonical.replace(/\|/g, '')) return '';
-      return await sha256Hex(canonical);
-    } catch (error) {
-      console.warn('[CATS persistence] fingerprint normalization failed', error);
-      return '';
-    }
-  }
-
-  // O verificador injetado precisa manter UM ÚNICO fingerprint de ponta a ponta.
-  // O código-base da página compara result.fingerprint com payload.fingerprint
-  // após a chamada. Portanto, além de enviar o fingerprint ISO ao backend,
-  // propagamos o mesmo valor ao objeto payload recebido do chamador.
+  // Transporte puro: o fingerprint recebido já deve estar no contrato canônico
+  // do backend (nome | e-mail | CPF numérico | data ISO yyyy-mm-dd).
+  // O verificador não lê o DOM e não altera o payload do chamador.
+  // submittedAtEpochMs é zerado apenas para neutralizar clock skew do dispositivo;
+  // o backend identifica a resposta exclusivamente pelo fingerprint.
   window.__CATS_PERSISTENCE_VERIFY__ = async payload => {
-    const liveFingerprint = await fingerprintFromLiveForm();
-    if (liveFingerprint) {
-      payload.fingerprint = liveFingerprint;
-      window.__CATS_PERSISTENCE_LAST_FINGERPRINT__ = liveFingerprint;
-    }
-
     const requestPayload = {
       ...payload,
       submittedAtEpochMs: 0,
