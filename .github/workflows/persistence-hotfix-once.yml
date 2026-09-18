@@ -47,7 +47,11 @@ jobs:
         run: |
           git config user.name 'CATS Hotfix Bot'
           git config user.email 'actions@users.noreply.github.com'
-          git add precurso.html persistence-config.js scripts/e2e_precurso.py scripts/apply_persistence_hotfix.py .github/workflows/precurso-smoke-e2e.yml docs/precurso-persistence-spec.md apps-script/CATS_PersistenceVerifier.gs
+          # O aplicador atualiza também o workflow permanente para incluir o novo arquivo
+          # no trigger. O token deste job não tem permissão de workflow; revertemos apenas
+          # essa mudança para que o hotfix funcional possa ser publicado sem ampliar escopo.
+          git checkout -- .github/workflows/precurso-smoke-e2e.yml
+          git add precurso.html persistence-config.js scripts/e2e_precurso.py scripts/apply_persistence_hotfix.py docs/precurso-persistence-spec.md apps-script/CATS_PersistenceVerifier.gs
           git status --short
           git commit -m 'Hotfix: só confirma pré-curso após persistência na planilha'
 
