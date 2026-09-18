@@ -9,6 +9,7 @@ on:
       - 'legacy.html'
       - 'persistence-config.js'
       - 'apps-script/CATS_PersistenceVerifier.gs'
+      - 'cats-auth.js'
       - 'scripts/precurso_submission_hardening.py'
       - 'scripts/qa_30_30.py'
       - 'scripts/qa_90_90.py'
@@ -20,12 +21,17 @@ on:
       - 'docs/precurso-persistence-spec.md'
   workflow_dispatch: {}
 
+concurrency:
+  group: cats-precurso-release-main
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
 jobs:
   release-precurso:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
         with:
