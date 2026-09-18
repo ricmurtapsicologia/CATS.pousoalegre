@@ -8,7 +8,7 @@
   const MAX_AUTO_RETRIES = 20;
 
   window.CATS_PERSISTENCE_VERIFY_URL = ENDPOINT;
-  window.__CATS_PERSISTENCE_CONFIG_VERSION__ = '2026.09.18-r9-auto';
+  window.__CATS_PERSISTENCE_CONFIG_VERSION__ = '2026.09.18-r11-email-hotfix';
 
   // Neutraliza clock skew do dispositivo: a identidade é conferida por
   // fingerprint + IDs oficiais; o relógio local não exclui linhas válidas.
