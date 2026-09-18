@@ -302,6 +302,7 @@
 
     const showPending = () => {
       success.removeAttribute("data-persistence-confirmed");
+      delete success.dataset.catsWelcomeApplied;
       doc.body.classList.add("cats-submit-pending");
       pending.classList.add("show");
       pending.scrollIntoView({ block: "start", behavior: "smooth" });
@@ -317,14 +318,17 @@
 
     const applyConfirmedWelcome = () => {
       if (success.getAttribute("data-persistence-confirmed") !== "true") return;
-      const h = success.querySelector("h2");
-      const p = success.querySelector("p");
-      if (h) h.textContent = FINAL_TITLE;
-      if (p) p.textContent = FINAL_TEXT;
       doc.body.classList.remove("cats-submit-pending");
       pending.classList.remove("show");
-      success.setAttribute("aria-live", "polite");
-      success.scrollIntoView({ block: "start", behavior: "smooth" });
+      if (success.dataset.catsWelcomeApplied === "true") return;
+
+      const h = success.querySelector("h2");
+      const p = success.querySelector("p");
+      if (h && h.textContent !== FINAL_TITLE) h.textContent = FINAL_TITLE;
+      if (p && p.textContent !== FINAL_TEXT) p.textContent = FINAL_TEXT;
+      if (success.getAttribute("aria-live") !== "polite") success.setAttribute("aria-live", "polite");
+      success.dataset.catsWelcomeApplied = "true";
+      window.requestAnimationFrame(() => success.scrollIntoView({ block: "start", behavior: "smooth" }));
     };
 
     form.addEventListener("submit", event => {
