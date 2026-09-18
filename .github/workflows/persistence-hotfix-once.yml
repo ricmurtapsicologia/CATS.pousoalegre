@@ -1,4 +1,4 @@
-name: CATS Pré-curso — Hotfix persistência (one-shot)
+name: CATS Pré-curso — Cache-bust hotfix (one-shot)
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  apply-test-commit:
+  cache-bust:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -19,41 +19,31 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      - uses: actions/setup-python@v7
-        with:
-          python-version: '3.12'
-
-      - name: Aplicar SPEC e hotfix fail-closed
+      - name: Forçar carregamento do hotfix r9
         run: |
-          python -m py_compile scripts/apply_persistence_hotfix.py
-          python scripts/apply_persistence_hotfix.py
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('precurso.html')
+          s = p.read_text(encoding='utf-8')
+          old = s
+          s = s.replace('persistence-config.js?v=20260918-1', 'persistence-config.js?v=20260918-r9-auto')
+          s = s.replace('2026.09.18-r7-persistence', '2026.09.18-r9-auto')
+          if s == old:
+              raise SystemExit('Nenhuma alteração aplicada: tokens esperados não encontrados')
+          p.write_text(s, encoding='utf-8')
+          PY
 
-      - name: Instalar Playwright
+      - name: Validar referências do build
         run: |
-          pip install playwright
-          playwright install --with-deps chromium
+          grep -q 'persistence-config.js?v=20260918-r9-auto' precurso.html
+          grep -q '2026.09.18-r9-auto' precurso.html
+          grep -q "formResponse" precurso.html
+          grep -q "RESPONSE_SHEET_ID" precurso.html
 
-      - name: Servir página localmente
-        run: |
-          python -m http.server 8765 --bind 127.0.0.1 > /tmp/cats-pre-http.log 2>&1 &
-          for i in {1..30}; do curl -fsS http://127.0.0.1:8765/precurso.html >/dev/null && exit 0; sleep 0.5; done
-          cat /tmp/cats-pre-http.log
-          exit 1
-
-      - name: Smoke + E2E do gate de persistência
-        run: python scripts/e2e_precurso.py http://127.0.0.1:8765/
-
-      - name: Preparar commit do hotfix validado
+      - name: Publicar cache-bust
         run: |
           git config user.name 'CATS Hotfix Bot'
           git config user.email 'actions@users.noreply.github.com'
-          # O aplicador atualiza também o workflow permanente para incluir o novo arquivo
-          # no trigger. O token deste job não tem permissão de workflow; revertemos apenas
-          # essa mudança para que o hotfix funcional possa ser publicado sem ampliar escopo.
-          git checkout -- .github/workflows/precurso-smoke-e2e.yml
-          git add precurso.html persistence-config.js scripts/e2e_precurso.py scripts/apply_persistence_hotfix.py docs/precurso-persistence-spec.md apps-script/CATS_PersistenceVerifier.gs
-          git status --short
-          git commit -m 'Hotfix: só confirma pré-curso após persistência na planilha'
-
-      - name: Publicar hotfix validado
-        run: git push origin HEAD:main
+          git add precurso.html
+          git commit -m 'Hotfix: cache-bust do verificador automático do pré-curso'
+          git push origin HEAD:main
