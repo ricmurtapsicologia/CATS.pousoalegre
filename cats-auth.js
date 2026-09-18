@@ -251,3 +251,111 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init, { once: true });
   else init();
 })();
+
+/*
+ * UX de submissão do pré-curso.
+ * Importante: "Envio realizado" significa apenas que o POST foi disparado.
+ * A mensagem de participação registrada só aparece após o verificador independente
+ * marcar #success[data-persistence-confirmed="true"]. Nenhum resultado BDI-II é
+ * calculado ou exibido no navegador.
+ */
+(() => {
+  "use strict";
+
+  const PENDING_ID = "catsSubmitPending";
+  const FINAL_TITLE = "Parabéns! Sua participação foi registrada com sucesso.";
+  const FINAL_TEXT = "Seja bem-vindo(a) ao VIII Curso de Atendimento a Tentativas de Suicídio — CATS 2026. Nos vemos em Pouso Alegre.";
+
+  function bindFeedback() {
+    const frame = document.getElementById("app");
+    let doc;
+    try { doc = frame?.contentDocument; } catch { return false; }
+    if (!doc) return false;
+
+    const form = doc.getElementById("catsForm");
+    const success = doc.getElementById("success");
+    const submit = doc.getElementById("submitBtn");
+    if (!form || !success || !submit) return false;
+    if (doc.documentElement.dataset.catsSubmitFeedback === "1") return true;
+    doc.documentElement.dataset.catsSubmitFeedback = "1";
+
+    const style = doc.createElement("style");
+    style.id = "catsSubmitFeedbackStyle";
+    style.textContent = `
+      #${PENDING_ID}{display:none;text-align:center;padding:30px 16px}
+      #${PENDING_ID}.show{display:block}
+      #${PENDING_ID} .cats-submit-icon{width:58px;height:58px;margin:0 auto 12px;border-radius:50%;display:grid;place-items:center;background:#e8f5ee;color:#1f7a55;font-weight:900;font-size:1.4rem}
+      #${PENDING_ID} h2{margin:0 0 8px;color:#17212b}
+      #${PENDING_ID} p{max-width:610px;margin:0 auto;color:#66717c}
+      body.cats-submit-pending #catsForm{display:none!important}
+      #success[data-persistence-confirmed="true"] ~ #${PENDING_ID}{display:none!important}
+    `;
+    doc.head.appendChild(style);
+
+    const pending = doc.createElement("section");
+    pending.id = PENDING_ID;
+    pending.className = "card";
+    pending.setAttribute("role", "status");
+    pending.setAttribute("aria-live", "polite");
+    pending.innerHTML = '<div class="cats-submit-icon" aria-hidden="true">✓</div><h2>Envio realizado</h2><p>Obrigado por concluir o levantamento pré-curso. Estamos confirmando o registro dos seus dados.</p>';
+    success.insertAdjacentElement("afterend", pending);
+
+    const showPending = () => {
+      success.removeAttribute("data-persistence-confirmed");
+      doc.body.classList.add("cats-submit-pending");
+      pending.classList.add("show");
+      pending.scrollIntoView({ block: "start", behavior: "smooth" });
+    };
+
+    const restoreOnFailure = () => {
+      const verifyAgain = doc.getElementById("catsVerifyAgain");
+      const failed = submit.textContent.includes("Envio sem confirmação") || Boolean(verifyAgain && !verifyAgain.hidden);
+      if (!failed) return;
+      doc.body.classList.remove("cats-submit-pending");
+      pending.classList.remove("show");
+    };
+
+    const applyConfirmedWelcome = () => {
+      if (success.getAttribute("data-persistence-confirmed") !== "true") return;
+      const h = success.querySelector("h2");
+      const p = success.querySelector("p");
+      if (h) h.textContent = FINAL_TITLE;
+      if (p) p.textContent = FINAL_TEXT;
+      doc.body.classList.remove("cats-submit-pending");
+      pending.classList.remove("show");
+      success.setAttribute("aria-live", "polite");
+      success.scrollIntoView({ block: "start", behavior: "smooth" });
+    };
+
+    form.addEventListener("submit", event => {
+      queueMicrotask(() => {
+        if (event.defaultPrevented) return;
+        showPending();
+      });
+    });
+
+    const observer = new MutationObserver(() => {
+      applyConfirmedWelcome();
+      restoreOnFailure();
+    });
+    observer.observe(success, { attributes: true, childList: true, subtree: true, characterData: true });
+    observer.observe(submit, { childList: true, subtree: true, characterData: true, attributes: true });
+    const verifyAgain = doc.getElementById("catsVerifyAgain");
+    if (verifyAgain) observer.observe(verifyAgain, { attributes: true });
+
+    applyConfirmedWelcome();
+    return true;
+  }
+
+  function start() {
+    const frame = document.getElementById("app");
+    if (frame) frame.addEventListener("load", () => window.setTimeout(bindFeedback, 0));
+    const timer = window.setInterval(() => {
+      if (bindFeedback()) window.clearInterval(timer);
+    }, 120);
+    window.setTimeout(() => window.clearInterval(timer), 15000);
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once: true });
+  else start();
+})();
