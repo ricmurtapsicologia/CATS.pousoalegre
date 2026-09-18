@@ -1,7 +1,10 @@
 /**
- * CATS Pré-curso — verificador de persistência v1.1.
+ * CATS Pré-curso — verificador de persistência v1.2.
  * Objetivo: só confirmar conclusão quando a linha correspondente estiver
  * materializada na planilha oficial. Não retorna PII nem respostas clínicas.
+ *
+ * Também pode enviar, por gatilho instalável da planilha, uma cópia integral
+ * de cada nova resposta efetivamente persistida para o e-mail do coordenador.
  *
  * Deploy: Web App | executar como proprietário | acesso: qualquer pessoa.
  */
@@ -10,6 +13,7 @@ const CATS = Object.freeze({
   formEditId: '1107fjdaiL42Zb0n2jNjKr0aiNNysyEADQCesdBTbD_E',
   sheetId: '1wQ0nc6TmCqqbu-ZqloIRLptO6iHqDhD00qrFLxP-fUk',
   sheetName: 'Respostas ao formulário 1',
+  emailTo: 'ricmurtapsicologia@gmail.com',
   maxRowsToScan: 160,
   clockSkewMs: 2 * 60 * 1000,
 });
@@ -32,7 +36,6 @@ function doPost(e) {
     stage = 'verify-request';
     return json_(verifyPersistence_(payload));
   } catch (err) {
-    // Diagnóstico deliberadamente sanitizado: informa apenas a etapa técnica.
     return json_({
       protocol: CATS.protocol,
       persisted: false,
@@ -52,9 +55,6 @@ function verifyPersistence_(payload) {
   if (payload.sheetId !== CATS.sheetId) return negative_('sheet-id-mismatch', true);
   if (!/^[a-f0-9]{64}$/i.test(String(payload.fingerprint || ''))) return negative_('invalid-fingerprint', true);
 
-  // O requisito de sucesso é a existência da resposta na planilha oficial.
-  // O Form ID continua pinado no protocolo, mas não dependemos de FormApp,
-  // reduzindo escopos e eliminando uma fonte desnecessária de falha.
   let ss;
   try {
     ss = SpreadsheetApp.openById(CATS.sheetId);
@@ -125,6 +125,92 @@ function verifyPersistence_(payload) {
   return negative_('row-not-yet-visible', false, payload.fingerprint);
 }
 
+/**
+ * Executa UMA vez no editor do Apps Script para criar o gatilho instalável.
+ * O gatilho dispara somente quando uma nova linha de resposta é efetivamente
+ * gravada na planilha oficial; portanto, o e-mail não é disparado por um
+ * simples POST ou pela tela de sucesso do navegador.
+ */
+function installEmailTrigger() {
+  const handler = 'emailSubmittedResponse';
+  ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === handler)
+    .forEach(t => ScriptApp.deleteTrigger(t));
+
+  ScriptApp.newTrigger(handler)
+    .forSpreadsheet(CATS.sheetId)
+    .onFormSubmit()
+    .create();
+
+  return 'Gatilho de e-mail instalado para ' + CATS.emailTo;
+}
+
+/**
+ * Envia uma cópia integral da resposta somente após a linha existir na Sheet.
+ * Esta função deve ser chamada pelo gatilho instalável criado acima.
+ */
+function emailSubmittedResponse(e) {
+  if (!e || !e.range) return;
+
+  const sheet = e.range.getSheet();
+  const ss = sheet.getParent();
+  if (ss.getId() !== CATS.sheetId || sheet.getName() !== CATS.sheetName) return;
+
+  const row = e.range.getRow();
+  if (row < 2) return;
+
+  const lastCol = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
+  const values = sheet.getRange(row, 1, 1, lastCol).getDisplayValues()[0];
+  const idx = indexHeaders_(headers);
+
+  const timestamp = idx.timestamp >= 0 ? values[idx.timestamp] : '';
+  const name = idx.name >= 0 ? values[idx.name] : 'Respondente';
+  const pairs = headers
+    .map((header, i) => ({ header: String(header || '').trim(), value: String(values[i] || '').trim() }))
+    .filter(item => item.header || item.value);
+
+  const textBody = [
+    'CATS — nova resposta do pré-curso confirmada na planilha oficial',
+    '',
+    'Respondente: ' + name,
+    'Registro: ' + timestamp,
+    'Linha: ' + row,
+    '',
+    ...pairs.map(item => item.header + ': ' + item.value),
+    '',
+    'Planilha oficial: https://docs.google.com/spreadsheets/d/' + CATS.sheetId + '/edit'
+  ].join('\n');
+
+  const rowsHtml = pairs.map(item =>
+    '<tr><th style="text-align:left;vertical-align:top;padding:6px 10px;border-bottom:1px solid #ddd;background:#f7f7f7">' +
+    htmlEscape_(item.header) +
+    '</th><td style="vertical-align:top;padding:6px 10px;border-bottom:1px solid #ddd">' +
+    htmlEscape_(item.value).replace(/\n/g, '<br>') +
+    '</td></tr>'
+  ).join('');
+
+  const htmlBody = [
+    '<div style="font-family:Arial,sans-serif;color:#1f2937">',
+    '<h2 style="margin:0 0 12px">CATS — nova resposta do pré-curso</h2>',
+    '<p><strong>Persistência confirmada na planilha oficial.</strong></p>',
+    '<p><strong>Respondente:</strong> ' + htmlEscape_(name) + '<br>',
+    '<strong>Registro:</strong> ' + htmlEscape_(timestamp) + '<br>',
+    '<strong>Linha:</strong> ' + row + '</p>',
+    '<table style="border-collapse:collapse;width:100%;max-width:900px">' + rowsHtml + '</table>',
+    '<p style="margin-top:16px"><a href="https://docs.google.com/spreadsheets/d/' + CATS.sheetId + '/edit">Abrir planilha oficial</a></p>',
+    '</div>'
+  ].join('');
+
+  MailApp.sendEmail({
+    to: CATS.emailTo,
+    subject: 'CATS Pré-curso | resposta confirmada | ' + name,
+    body: textBody,
+    htmlBody: htmlBody,
+    name: 'CATS Pré-curso'
+  });
+}
+
 function indexHeaders_(headers) {
   const normalized = headers.map(normalizeHeader_);
   const find = (...needles) => normalized.findIndex(h => needles.some(n => h === n || h.indexOf(n) >= 0));
@@ -175,6 +261,15 @@ function timestampMs_(value, tz) {
 function sha256_(value) {
   const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, value, Utilities.Charset.UTF_8);
   return digest.map(b => ((b < 0 ? b + 256 : b).toString(16).padStart(2, '0'))).join('');
+}
+
+function htmlEscape_(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function backendNegative_(stage, fingerprint) {
