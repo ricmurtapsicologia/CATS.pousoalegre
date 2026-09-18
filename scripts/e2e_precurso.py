@@ -177,14 +177,15 @@ with sync_playwright() as p:
         """() => {
           window.__catsVerifierMode = 'wrong-sheet';
           window.__catsLastPayload = null;
-          window.__CATS_PERSISTENCE_VERIFY_TIMEOUT__ = 500;
+          window.__CATS_PERSISTENCE_VERIFY_TIMEOUT__ = 5000;
           window.__CATS_PERSISTENCE_VERIFY__ = async payload => {
             window.__catsLastPayload = {...payload};
+            const positive = window.__catsVerifierMode === 'positive';
             return {
               protocol: 'cats-persistence-v1',
               persisted: true,
-              terminal: true,
-              sheetId: window.__catsVerifierMode === 'positive'
+              terminal: positive,
+              sheetId: positive
                 ? '1wQ0nc6TmCqqbu-ZqloIRLptO6iHqDhD00qrFLxP-fUk'
                 : 'SHEET-ERRADA',
               formEditId: '1107fjdaiL42Zb0n2jNjKr0aiNNysyEADQCesdBTbD_E',
