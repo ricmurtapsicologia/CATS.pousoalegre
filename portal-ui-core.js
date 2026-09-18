@@ -4,6 +4,7 @@
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const ONBOARDING_KEY = "cats_pa_onboarded_v2";
+  const ANALYTICS_CONSENT_ID = "ric-analytics-consent";
 
   function moveLogoutIntoNav() {
     const logout = document.getElementById("catsAuthLogout");
@@ -39,6 +40,30 @@
       }
     };
 
+    // O consentimento de analytics é uma decisão separada. Enquanto o usuário
+    // ainda precisa concluir o onboarding, ele é apenas suspenso visualmente;
+    // nenhuma preferência de analytics é criada, aceita ou negada por este código.
+    const syncAnalyticsConsent = () => {
+      const consent = document.getElementById(ANALYTICS_CONSENT_ID);
+      if (!consent) return;
+      if (!isCompleted()) {
+        consent.dataset.catsSuspended = "onboarding";
+        consent.setAttribute("aria-hidden", "true");
+        consent.style.setProperty("display", "none", "important");
+        consent.style.setProperty("pointer-events", "none", "important");
+        return;
+      }
+      if (consent.dataset.catsSuspended === "onboarding") {
+        delete consent.dataset.catsSuspended;
+        consent.removeAttribute("aria-hidden");
+        consent.style.removeProperty("display");
+        consent.style.removeProperty("pointer-events");
+      }
+    };
+
+    const analyticsObserver = new MutationObserver(syncAnalyticsConsent);
+    analyticsObserver.observe(document.body, { childList: true, subtree: false });
+
     const hide = ({ persist = true } = {}) => {
       if (persist) {
         try { localStorage.setItem(ONBOARDING_KEY, "1"); } catch {}
@@ -47,9 +72,11 @@
       panel.setAttribute("aria-hidden", "true");
       panel.style.setProperty("display", "none", "important");
       document.body.style.overflow = "";
+      syncAnalyticsConsent();
     };
 
     const show = () => {
+      syncAnalyticsConsent();
       panel.hidden = false;
       panel.setAttribute("aria-hidden", "false");
       panel.style.setProperty("display", "grid", "important");
@@ -57,9 +84,14 @@
     };
 
     const enforceCompletedState = () => {
-      if (!isCompleted()) return;
+      if (!isCompleted()) {
+        syncAnalyticsConsent();
+        return;
+      }
       if (!panel.hidden || getComputedStyle(panel).display !== "none") {
         hide({ persist: false });
+      } else {
+        syncAnalyticsConsent();
       }
     };
 
@@ -85,6 +117,7 @@
         hide({ persist: false });
         return;
       }
+      syncAnalyticsConsent();
       if (legacyOnboarding) legacyOnboarding();
       if (isCompleted()) hide({ persist: false });
       else show();
@@ -96,6 +129,7 @@
       attributeFilter: ["style", "hidden", "aria-hidden"],
     });
 
+    syncAnalyticsConsent();
     if (isCompleted()) hide({ persist: false });
   }
 
