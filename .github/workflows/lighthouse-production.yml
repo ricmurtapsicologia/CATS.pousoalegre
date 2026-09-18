@@ -5,6 +5,11 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/lighthouse-production.yml'
+      - 'precurso.html'
+      - 'legacy.html'
+      - 'persistence-config.js'
+      - 'cats-auth.js'
+      - 'cats-auth.css'
   workflow_dispatch: {}
 
 permissions:
