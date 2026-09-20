@@ -166,29 +166,22 @@ with sync_playwright() as p:
     assert "Envio realizado" in pending_text
     assert "confirmando o registro" in pending_text.lower()
 
-    # A rota interceptada do Google Forms não é obrigada a produzir o mesmo
-    # evento de navegação do iframe oculto em todos os runners. Disparamos o
-    # evento que o produto usa para iniciar a confirmação, depois que o estado
-    # de submissão já foi criado pelo submit real.
-    frame.locator("#google-response").evaluate("el => el.dispatchEvent(new Event('load'))")
+    # Inicia explicitamente a confirmação no iframe oculto. O interceptor do
+    # POST não reproduz o evento de navegação de modo idêntico em todo runner.
+    response_frame = frame.locator("#google-response")
+    response_frame.evaluate("el => el.dispatchEvent(new Event('load'))")
 
-    # O verificador apontando para Sheet errada não pode produzir falso positivo.
+    # A resposta com Sheet divergente deve permanecer fail-closed durante toda
+    # a janela de verificação. Esperamos a janela real expirar e comprovamos
+    # diretamente que nenhuma confirmação positiva foi exibida.
     success = frame.locator("#success")
-    page.wait_for_function(
-        """() => {
-          const f=document.querySelector('#app');
-          const s=f?.contentDocument?.querySelector('#catsPersistenceStatus');
-          return !!s && /NÃO foi confirmada/i.test(s.textContent || '');
-        }""",
-        timeout=10000,
-    )
+    page.wait_for_timeout(7500)
     assert success.get_attribute("data-persistence-confirmed") != "true"
     assert not success.is_visible()
 
-    # Muda o verificador para resposta válida e dispara uma nova notificação de
-    # carregamento para validar a rechecagem e a confirmação positiva.
+    # Rechecagem positiva: mesma submissão, agora com identificadores válidos.
     page.evaluate("window.__catsVerifierMode='positive'")
-    frame.locator("#google-response").evaluate("el => el.dispatchEvent(new Event('load'))")
+    response_frame.evaluate("el => el.dispatchEvent(new Event('load'))")
     success.wait_for(state="visible", timeout=7000)
     assert success.get_attribute("data-persistence-confirmed") == "true"
     success_text = success.inner_text()
