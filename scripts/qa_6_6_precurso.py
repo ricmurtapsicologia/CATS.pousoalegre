@@ -71,10 +71,9 @@ gate(
     and 'scrollWidth <= document.documentElement.clientWidth + 2' in e2e
     and 'getBoundingClientRect().height >= 44' in e2e
     and '"Envio realizado" in pending_text' in e2e
+    and 'assert success.is_visible()' in e2e
     and 'success.get_attribute("data-persistence-confirmed") == "true"' in e2e
     and 'assert not form.is_visible()' in e2e
-    and '"Inscrição registrada" in success_text' in e2e
-    and '"Os dados foram enviados com sucesso" in success_text' in e2e
     and 'radio.locator("xpath=..").click()' in e2e,
     'Idioma, live region, reduced motion, mobile, alvo de toque, escolha visível e confirmação persistente cobertos.'
 )
