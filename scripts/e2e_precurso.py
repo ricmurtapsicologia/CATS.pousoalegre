@@ -34,20 +34,6 @@ def install_session(context) -> None:
     )
 
 
-def disable_external_auth(page) -> None:
-    # O contrato do gate de autenticação é exercido pelo E2E final do portal.
-    # Neste teste do pré-curso, a sessão já é válida e os scripts externos são
-    # neutralizados para o fluxo de formulário não depender de rede externa.
-    page.route(
-        "https://ricmurtapsicologia.github.io/Curso-ATS/auth.js*",
-        lambda route: route.fulfill(status=200, content_type="application/javascript", body="/* E2E auth stub */"),
-    )
-    page.route(
-        "https://ricmurtapsicologia.github.io/Curso-ATS/auth-extra.js*",
-        lambda route: route.fulfill(status=200, content_type="application/javascript", body="/* E2E extra auth stub */"),
-    )
-
-
 def configure_verifier(page) -> None:
     page.add_init_script(
         """() => {
@@ -76,7 +62,6 @@ with sync_playwright() as p:
     context = browser.new_context(viewport={"width": 390, "height": 844})
     install_session(context)
     page = context.new_page()
-    disable_external_auth(page)
     configure_verifier(page)
 
     captured: list[dict[str, str]] = []
@@ -86,10 +71,12 @@ with sync_playwright() as p:
 
     page.route("**/formResponse", capture_form_response)
     page.goto(BASE + "precurso.html", wait_until="domcontentloaded")
-    page.wait_for_selector("#app.ready", timeout=10000)
+    page.wait_for_selector("#app.ready", state="attached", timeout=15000)
+    page.wait_for_function("() => !document.documentElement.classList.contains('cats-auth-pending')", timeout=15000)
     frame = page.frame_locator("#app")
     form = frame.locator("#catsForm")
-    form.wait_for(state="visible", timeout=10000)
+    form.wait_for(state="visible", timeout=15000)
+    assert page.locator("#catsAuthGate").is_hidden()
     assert (form.get_attribute("action") or "").endswith("/formResponse")
     assert frame.locator("[required]:not([name])").count() == 0
 
@@ -207,4 +194,4 @@ with sync_playwright() as p:
     context.close()
     browser.close()
 
-print("PASS: E2E pré-curso — fluxo real de escolha, POST, fail-closed, persistência confirmada e privacidade validados.")
+print("PASS: E2E pré-curso — fluxo real de escolha, POST, persistência confirmada e privacidade validados.")
