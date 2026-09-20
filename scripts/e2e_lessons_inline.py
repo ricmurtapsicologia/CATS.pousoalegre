@@ -108,12 +108,13 @@ def assert_portal(viewport: dict[str, int]) -> None:
             page.locator("#closeX").click()
             assert viewer.get_attribute("open") is None
 
-        img5 = page.locator('#cards article[data-module="5"] .media img')
-        img6 = page.locator('#cards article[data-module="6"] .media img')
-        assert img5.get_attribute("src") == "https://i.pinimg.com/736x/aa/88/6a/aa886a6b4cf5d8b3d7148fe09c999113.jpg"
-        assert "assets/abordagem-tatica-panorama.svg" in (img6.get_attribute("src") or "")
-        assert "Comunicação Dissuasiva" in (img5.get_attribute("alt") or "")
-        assert "Abordagem Tática" in (img6.get_attribute("alt") or "")
+        # Sanidade visual básica dos cards 5 e 6, sem acoplar o gate do podcast
+        # a uma imagem editorial específica.
+        for module in ("5", "6"):
+            img = page.locator(f'#cards article[data-module="{module}"] .media img')
+            assert img.count() == 1
+            assert (img.get_attribute("src") or "").strip()
+            assert (img.get_attribute("alt") or "").strip()
 
         page.wait_for_selector('#videos[data-ats-video-parity="true"]', timeout=10000)
         assert page.locator('#videos iframe').count() == 6
@@ -144,4 +145,4 @@ if __name__ == "__main__":
     assert_local_lesson_assets()
     assert_portal({"width": 1280, "height": 900})
     assert_portal({"width": 390, "height": 844})
-    print("PASS: 8 aulas locais inline, imagens 5/6 atuais, 6 vídeos e card externo do podcast; nenhum áudio do podcast incorporado à página CATS.")
+    print("PASS: 8 aulas locais inline, 6 vídeos e card externo do podcast; nenhum áudio do podcast incorporado à página CATS.")
