@@ -27,7 +27,7 @@
   function loadSupplementalAuth() {
     if (document.querySelector("script[data-cats-extra-auth]")) return;
     const script = document.createElement("script");
-    script.src = "https://ricmurtapsicologia.github.io/Curso-ATS/auth-extra.js?v=20260920-ops1";
+    script.src = "https://ricmurtapsicologia.github.io/Curso-ATS/auth-extra.js?v=20260920-v201";
     script.dataset.catsExtraAuth = "true";
     document.head.appendChild(script);
   }
@@ -138,8 +138,7 @@
     const input = gate.querySelector("#catsAuthInput");
     if (!form || !input) return;
 
-    gate.querySelector("#catsAuthSubmit")?.remove();
-    setText(gate, "#catsAuthHelp", "Matrícula BM/PM: 7 números. CPF cadastrado: 11 números.");
+    setText(gate, "#catsAuthHelp", "Matrícula BM/PM: 7 números. CPF cadastrado: 11 números. Use o botão Acessar ou Enter.");
 
     if (input.dataset.autoAccessBound === "1") return;
     input.dataset.autoAccessBound = "1";
@@ -147,12 +146,11 @@
     const request = delay => {
       window.clearTimeout(autoTimer);
       const current = digits(input.value);
-      if (current.length !== 7 && current.length !== 11) return;
+      if (current.length !== 11) return;
       autoTimer = window.setTimeout(() => {
         if (input.disabled) return;
         const latest = digits(input.value);
-        if (latest !== current) return;
-        if (latest.length !== 7 && latest.length !== 11) return;
+        if (latest !== current || latest.length !== 11) return;
         form.requestSubmit();
       }, delay);
     };
@@ -161,7 +159,6 @@
       const length = digits(input.value).length;
       window.clearTimeout(autoTimer);
       if (length === 11) request(0);
-      else if (length === 7) request(550);
     });
   }
 
