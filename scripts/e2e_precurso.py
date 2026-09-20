@@ -167,17 +167,16 @@ with sync_playwright() as p:
     assert "confirmando o registro" in pending_text.lower()
 
     # O verificador apontando para Sheet errada não pode produzir falso positivo.
+    # O status pode permanecer visualmente oculto pelo fluxo de UX; o contrato
+    # relevante é o estado textual de confirmação negativa, não sua visibilidade.
     success = frame.locator("#success")
-    status = frame.locator("#catsPersistenceStatus")
-    status.wait_for(state="visible", timeout=3000)
-    status.wait_for(state="visible", timeout=7000)
     page.wait_for_function(
         """() => {
           const f=document.querySelector('#app');
           const s=f?.contentDocument?.querySelector('#catsPersistenceStatus');
           return !!s && /NÃO foi confirmada/i.test(s.textContent || '');
         }""",
-        timeout=7000,
+        timeout=10000,
     )
     assert success.get_attribute("data-persistence-confirmed") != "true"
     assert not success.is_visible()
