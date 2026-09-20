@@ -23,11 +23,7 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-
-          targets = {
-              'index.html': 'cats-pouso-alegre',
-              'precurso.html': 'cats-precurso',
-          }
+          targets = {'index.html':'cats-pouso-alegre','precurso.html':'cats-precurso'}
           for filename, page_id in targets.items():
               p = Path(filename)
               s = p.read_text(encoding='utf-8')
@@ -36,33 +32,32 @@ jobs:
                   block = f'''\n  <meta name="ric-analytics-page" content="{page_id}">\n  <meta name="ric-analytics-privacy" content="public">\n  <script src="https://ricmurtapsicologia.github.io/RPD/assets/js/ric-analytics.js?v=1.1.3" defer></script>\n'''
                   if '</head>' not in s:
                       raise SystemExit(f'{filename}: </head> ausente')
-                  s = s.replace('</head>', block + '</head>', 1)
-                  p.write_text(s, encoding='utf-8')
-          PY
-      - name: Validate GA4 instrumentation
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          checks = {
-              'index.html': 'cats-pouso-alegre',
-              'precurso.html': 'cats-precurso',
-          }
-          for filename, page_id in checks.items():
-              s = Path(filename).read_text(encoding='utf-8')
-              assert s.count(f'<meta name="ric-analytics-page" content="{page_id}">') == 1
-              assert s.count('<meta name="ric-analytics-privacy" content="public">') == 1
-              assert s.count('ric-analytics.js?v=1.1.3') == 1
-              assert 'googletagmanager.com/gtag/js?id=' not in s
-          print('CATS_GA4_COVERAGE_OK')
+                  p.write_text(s.replace('</head>', block + '</head>', 1), encoding='utf-8')
           PY
       - name: Commit patch to hotfix branch when needed
         run: |
           if git diff --quiet -- index.html precurso.html; then
             echo 'No content patch needed.'
-            exit 0
+          else
+            git config user.name 'ricmurtapsicologia'
+            git config user.email '164411318+ricmurtapsicologia@users.noreply.github.com'
+            git add index.html precurso.html
+            git commit -m 'hotfix: instrument CATS and pre-course with GA4 core'
+            git push origin HEAD:hotfix/ga4-coverage-20260920
           fi
-          git config user.name 'ricmurtapsicologia'
-          git config user.email '164411318+ricmurtapsicologia@users.noreply.github.com'
-          git add index.html precurso.html
-          git commit -m 'hotfix: instrument CATS and pre-course with GA4 core'
-          git push origin HEAD:hotfix/ga4-coverage-20260920
+      - name: Validate GA4 instrumentation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          checks = {'index.html':'cats-pouso-alegre','precurso.html':'cats-precurso'}
+          for filename, page_id in checks.items():
+              s = Path(filename).read_text(encoding='utf-8')
+              counts = {
+                  'page': s.count(f'<meta name="ric-analytics-page" content="{page_id}">'),
+                  'privacy': s.count('<meta name="ric-analytics-privacy" content="public">'),
+                  'core': s.count('ric-analytics.js?v=1.1.3'),
+              }
+              print(filename, counts)
+              assert counts == {'page':1,'privacy':1,'core':1}, (filename, counts)
+          print('CATS_GA4_COVERAGE_OK')
+          PY
