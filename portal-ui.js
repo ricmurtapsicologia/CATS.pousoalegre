@@ -40,5 +40,4 @@
   load('https://ricmurtapsicologia.github.io/Curso-ATS/access-2026.js?v=20260914-4','access-2026.js');
   load('portal-ui-core.js?v=20260918-r18','portal-ui-core.js');
   load('presentation-originals.js?v=20260920-local-pdf-2','presentation-originals.js');
-  load('audio-inline.js?v=20260920-audio-inline-2','audio-inline.js');
 })();
