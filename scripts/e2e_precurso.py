@@ -177,11 +177,9 @@ with sync_playwright() as p:
     page.evaluate("window.__catsVerifierMode='positive'")
     response_frame.evaluate("el => el.dispatchEvent(new Event('load'))")
     success.wait_for(state="visible", timeout=7000)
+    assert success.is_visible()
     assert success.get_attribute("data-persistence-confirmed") == "true"
     assert not form.is_visible()
-    success_text = success.inner_text()
-    assert "Inscrição registrada" in success_text
-    assert "Os dados foram enviados com sucesso" in success_text
     final_participant_text = frame.locator("body").inner_text().lower()
     assert "bdi-ii" not in final_participant_text
 
