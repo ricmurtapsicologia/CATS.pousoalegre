@@ -73,7 +73,8 @@ gate(
     and 'scrollWidth <= document.documentElement.clientWidth + 2' in e2e
     and 'getBoundingClientRect().height >= 44' in e2e
     and '"Envio realizado" in pending_text' in e2e
-    and '"participação foi registrada com sucesso" in success_text' in e2e
+    and '"Preenchimento confirmado" in success_text' in e2e
+    and '"Dados gravados na planilha oficial de respostas." in success_text' in e2e
     and 'radio.locator("xpath=..").click()' in e2e,
     'Idioma, live region, reduced motion, mobile, alvo de toque, escolha visível e feedback pós-envio cobertos.'
 )
