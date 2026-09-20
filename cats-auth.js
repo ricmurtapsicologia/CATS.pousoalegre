@@ -27,7 +27,7 @@
   function loadSupplementalAuth() {
     if (document.querySelector("script[data-cats-extra-auth]")) return;
     const script = document.createElement("script");
-    script.src = "https://ricmurtapsicologia.github.io/Curso-ATS/auth-extra.js?v=20260920-v201";
+    script.src = "https://ricmurtapsicologia.github.io/Curso-ATS/auth-extra.js?v=20260920-v202";
     script.dataset.catsExtraAuth = "true";
     document.head.appendChild(script);
   }
