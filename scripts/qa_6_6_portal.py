@@ -107,9 +107,10 @@ gate(
     and "qa_6_6_portal.py" in workflow
     and "smoke_portal.py" in workflow
     and "e2e_release.py" in workflow
-    and "lighthouse-production.yml" in lighthouse
+    and "name: Lighthouse — Produção" in lighthouse
     and "presentation-originals.js" in lighthouse
-    and "assets/lessons/**" in lighthouse,
+    and "assets/lessons/**" in lighthouse
+    and "LIGHTHOUSE_GATE_PASS" in lighthouse,
     "30/30 + 90/90 + 6/6 + smoke + E2E + Lighthouse cobrem mudanças críticas.",
 )
 
