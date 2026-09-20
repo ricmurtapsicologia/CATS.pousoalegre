@@ -88,7 +88,7 @@ with sync_playwright() as p:
     first_occurrence = frame.locator('#ocorrencia option').nth(1)
     assert first_occurrence.get_attribute('value') == 'Nunca atendi.'
     assert first_occurrence.inner_text() == 'Nunca atendi.'
-    assert frame.evaluate("document.documentElement.dataset.catsFormsContract") == CONFIG_VERSION
+    assert frame.locator("html").evaluate("el => el.dataset.catsFormsContract") == CONFIG_VERSION
 
     participant_text = frame.locator("body").inner_text().lower()
     assert "bdi-ii" not in participant_text
@@ -132,7 +132,7 @@ with sync_playwright() as p:
     assert frame.locator("[required]:invalid").count() == 0
 
     assert page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2")
-    assert frame.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2")
+    assert frame.locator("html").evaluate("el => el.scrollWidth <= el.clientWidth + 2")
     assert frame.locator("#posto").evaluate("el => getComputedStyle(el).fontSize") == "16px"
     assert frame.locator("#submitBtn").evaluate("el => el.getBoundingClientRect().height >= 44")
 
