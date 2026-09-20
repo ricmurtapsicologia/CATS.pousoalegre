@@ -18,8 +18,6 @@ def gate(name, ok, evidence):
     checks.append((name, bool(ok), evidence))
 
 # 1 — Integridade funcional do formulário.
-# O E2E atual não usa inspeção meramente lexical do action: intercepta de fato
-# o POST /formResponse, captura o payload e confirma os mappings críticos.
 gate(
     'Integridade funcional',
     FORM_PUBLIC_ID in pre
@@ -73,10 +71,12 @@ gate(
     and 'scrollWidth <= document.documentElement.clientWidth + 2' in e2e
     and 'getBoundingClientRect().height >= 44' in e2e
     and '"Envio realizado" in pending_text' in e2e
-    and '"Preenchimento confirmado" in success_text' in e2e
-    and '"Dados gravados na planilha oficial de respostas." in success_text' in e2e
+    and 'success.get_attribute("data-persistence-confirmed") == "true"' in e2e
+    and 'assert not form.is_visible()' in e2e
+    and '"Inscrição registrada" in success_text' in e2e
+    and '"Os dados foram enviados com sucesso" in success_text' in e2e
     and 'radio.locator("xpath=..").click()' in e2e,
-    'Idioma, live region, reduced motion, mobile, alvo de toque, escolha visível e feedback pós-envio cobertos.'
+    'Idioma, live region, reduced motion, mobile, alvo de toque, escolha visível e confirmação persistente cobertos.'
 )
 
 # 5 — Robustez operacional e regressão.
@@ -95,8 +95,6 @@ gate(
 )
 
 # 6 — Prontidão de entrega e canal de e-mail.
-# Este gate prova a preparação do produto; a ativação/autorização do projeto Apps
-# Script em produção é uma evidência operacional externa e não é inferida do Git.
 gate(
     'Prontidão de entrega',
     'notifyEmail:true' in pre
