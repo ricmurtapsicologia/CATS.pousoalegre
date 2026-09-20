@@ -18,15 +18,19 @@ def gate(name, ok, evidence):
     checks.append((name, bool(ok), evidence))
 
 # 1 — Integridade funcional do formulário.
+# O E2E atual não usa inspeção meramente lexical do action: intercepta de fato
+# o POST /formResponse, captura o payload e confirma os mappings críticos.
 gate(
     'Integridade funcional',
     FORM_PUBLIC_ID in pre
     and 'formResponse' in pre
     and 'entry.500885681' in pre
     and 'entry.327261555' in pre
-    and '[required]:not([name])' in e2e
-    and "form.get_attribute(\"action\").endswith(\"/formResponse\")" in e2e,
-    'Form oficial, mappings críticos e E2E de campos obrigatórios/mapeados.'
+    and 'page.route("**/formResponse", capture_form_response)' in e2e
+    and 'assert captured' in e2e
+    and 'payload.get("entry.500885681") == "Nunca atendi."' in e2e
+    and 'all(name in payload for name in names)' in e2e,
+    'Form oficial, mappings críticos, POST real interceptado e payload clínico completo.'
 )
 
 # 2 — Persistência e rastreabilidade.
@@ -53,9 +57,10 @@ gate(
     and sensitive_local is None
     and 'Não retorna PII' in verifier
     and 'respostas clínicas' in verifier
-    and 'assert "bdi-ii" not in participant_text' in e2e
-    and 'assert "bdi-ii" not in final_participant_text' in e2e,
-    'Sem cache local de respostas sensíveis; verifier não devolve PII/BDI-II; navegador não exibe resultado.'
+    and 'storage_dump' in e2e
+    and 'assert "entry.626004811" not in storage_dump' in e2e
+    and 'assert "bdi" not in storage_dump.lower()' in e2e,
+    'Sem cache local de respostas sensíveis; verifier não devolve PII/BDI-II; E2E inspeciona storages.'
 )
 
 # 4 — UX, acessibilidade e responsividade.
@@ -67,9 +72,10 @@ gate(
     and '@media(max-width:420px)' in pre
     and 'scrollWidth <= document.documentElement.clientWidth + 2' in e2e
     and 'getBoundingClientRect().height >= 44' in e2e
-    and 'Envio realizado' in e2e
-    and 'Parabéns! Sua participação foi registrada com sucesso.' in e2e,
-    'Idioma, live region, reduced motion, mobile, alvo de toque e feedback pós-envio cobertos.'
+    and '"Envio realizado" in pending_text' in e2e
+    and '"participação foi registrada com sucesso" in success_text' in e2e
+    and 'radio.locator("xpath=..").click()' in e2e,
+    'Idioma, live region, reduced motion, mobile, alvo de toque, escolha visível e feedback pós-envio cobertos.'
 )
 
 # 5 — Robustez operacional e regressão.
@@ -81,7 +87,8 @@ gate(
     and "submittedAtEpochMs: 0" in persist
     and 'SHEET-ERRADA' in e2e
     and 'data-persistence-confirmed' in e2e
-    and 'assert submitted["seen"]' in e2e
+    and 'assert captured' in e2e
+    and 'positive ?' in e2e
     and "$('#success').classList.add('show');\n    window.scrollTo" not in legacy,
     'Retry automático, clock-skew neutralizado, POST observado e falso positivo bloqueado.'
 )
