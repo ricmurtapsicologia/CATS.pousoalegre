@@ -181,8 +181,8 @@ with sync_playwright() as p:
     success.wait_for(state="visible", timeout=7000)
     assert success.get_attribute("data-persistence-confirmed") == "true"
     success_text = success.inner_text()
-    assert "participação foi registrada com sucesso" in success_text
-    assert "VIII Curso de Atendimento a Tentativas de Suicídio" in success_text
+    assert "Preenchimento confirmado" in success_text
+    assert "Dados gravados na planilha oficial de respostas." in success_text
     final_participant_text = frame.locator("body").inner_text().lower()
     assert "bdi-ii" not in final_participant_text
 
