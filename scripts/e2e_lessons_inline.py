@@ -8,6 +8,7 @@ import requests
 from playwright.sync_api import sync_playwright
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8765/"
+PODCAST_URL = "https://ricmurtapsicologia.github.io/Podcast-ATS-CBMMG/"
 
 SOURCE_IDS = {
     "1": "1ZYiAFZwrDE2i2zRpMg714cBqC4R-2OeH",
@@ -19,13 +20,6 @@ SOURCE_IDS = {
     "7": "1hx-CVfbGbCzen1Ygc0-9lTHm81xVcaxw",
     "8": "1lVMb2TMiex4Z48_y1S2GA_mnTTgogS6u",
 }
-
-AUDIO_SAMPLES = [
-    "https://ricmurtapsicologia.github.io/Podcast-ATS-CBMMG/assets/audio/serie-1/a1-001-n3.mp3?v=n3-ptbr-native-20260901",
-    "https://ricmurtapsicologia.github.io/Podcast-ATS-CBMMG/assets/audio/serie-1/a1-021-n3.mp3?v=n3-ptbr-native-20260901",
-    "https://ricmurtapsicologia.github.io/Podcast-ATS-CBMMG/assets/audio/serie-2/a2-000-n3.mp3?v=n3-cast-20260901c",
-    "https://ricmurtapsicologia.github.io/Podcast-ATS-CBMMG/assets/audio/serie-2/a2-013-n3.mp3?v=n3-cast-20260901c",
-]
 
 
 def auth_payload() -> str:
@@ -47,15 +41,6 @@ def assert_local_lesson_assets() -> None:
         assert len(response.content) > 10000, f"Aula {module}: PDF inesperadamente pequeno"
 
 
-def assert_audio_sources() -> None:
-    headers = {"Range": "bytes=0-2047", "User-Agent": "CATS-E2E/2026"}
-    for url in AUDIO_SAMPLES:
-        response = requests.get(url, headers=headers, timeout=20, allow_redirects=True)
-        assert response.status_code in (200, 206), (url, response.status_code)
-        content_type = (response.headers.get("content-type") or "").lower()
-        assert "audio" in content_type or "mpeg" in content_type or response.content[:3] == b"ID3", (url, content_type)
-
-
 def install_session(context) -> None:
     payload = auth_payload()
     context.add_init_script(
@@ -70,12 +55,6 @@ def neutralize_external_noise(page) -> None:
     ))
     page.route("**/youtube.com/embed/**", lambda route: route.fulfill(
         status=200, content_type="text/html", body="<!doctype html><title>YouTube E2E</title>"
-    ))
-    page.route("**/Podcast-ATS-CBMMG/assets/audio/**", lambda route: route.fulfill(
-        status=206,
-        headers={"Content-Range": "bytes 0-2/3", "Accept-Ranges": "bytes"},
-        content_type="audio/mpeg",
-        body=b"ID3",
     ))
     page.route("**/fonts.googleapis.com/**", lambda route: route.abort())
     page.route("**/fonts.gstatic.com/**", lambda route: route.abort())
@@ -111,8 +90,6 @@ def assert_portal(viewport: dict[str, int]) -> None:
             assert link.get_attribute("data-slide-id") == source_id
             assert link.get_attribute("data-slide-url") == f"assets/lessons/aula-0{module}.pdf"
 
-            # No mobile o conteúdo do card é intencionalmente recolhido; simula o
-            # toque real do aluno em "Ver detalhes" antes de "Acessar aula".
             if not link.is_visible():
                 toggle = card.locator(".lesson-toggle")
                 assert toggle.count() == 1, f"Aula {module}: conteúdo oculto sem controle de expansão"
@@ -143,30 +120,20 @@ def assert_portal(viewport: dict[str, int]) -> None:
         assert page.locator('#videosToggle').count() == 0
         assert page.locator('#videos [hidden]').count() == 0
 
-        page.wait_for_selector('#catsAudioLibrary[data-ready="true"]', timeout=15000)
-        assert page.locator('#catsAudioLibrary audio').count() == 35
-        assert page.locator('#catsAudioLibrary a[download]').count() == 0
-        audio_attrs = page.locator('#catsAudioLibrary audio').evaluate_all(
-            "els => els.map(e => ({controls:e.hasAttribute('controls'), list:e.getAttribute('controlsList')||'', remote:e.hasAttribute('disableRemotePlayback')}))"
-        )
-        assert all(a["controls"] for a in audio_attrs)
-        assert all("nodownload" in a["list"] for a in audio_attrs)
-        assert all("noremoteplayback" in a["list"] for a in audio_attrs)
-        assert all(a["remote"] for a in audio_attrs)
-
+        # O podcast permanece como recurso externo protegido na própria página do projeto.
+        assert page.locator('#catsAudioLibrary').count() == 0
+        assert page.locator('script[src*="audio-inline.js"]').count() == 0
+        assert page.locator('audio').count() == 0
         project_link = page.locator('article[data-module="proj"] .actions a').first
-        assert project_link.get_attribute("href") == "#catsAudioLibrary"
-        assert project_link.get_attribute("target") is None
+        assert project_link.get_attribute("href") == PODCAST_URL
+        assert project_link.get_attribute("target") == "_blank"
+        assert "noopener" in (project_link.get_attribute("rel") or "")
+        assert "Acessar projeto" in project_link.inner_text()
 
         deck_mode = page.evaluate("window.CATSPousoAlegreInlineDeckMode")
         assert deck_mode["inline"] is True
         assert deck_mode["externalNavigation"] is False
         assert deck_mode["viewer"] == "local-pdf"
-        audio_mode = page.evaluate("window.CATSPousoAlegreAudioMode")
-        assert audio_mode["inline"] is True
-        assert audio_mode["externalNavigation"] is False
-        assert audio_mode["downloadOffered"] is False
-        assert audio_mode["episodes"] == 35
 
         assert page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2")
         context.close()
@@ -175,7 +142,6 @@ def assert_portal(viewport: dict[str, int]) -> None:
 
 if __name__ == "__main__":
     assert_local_lesson_assets()
-    assert_audio_sources()
     assert_portal({"width": 1280, "height": 900})
     assert_portal({"width": 390, "height": 844})
-    print("PASS: 8 aulas locais inline, imagens 5/6, 6 vídeos e 35 áudios inline; sem navegação externa nem download oferecido de áudio.")
+    print("PASS: 8 aulas locais inline, imagens 5/6, 6 vídeos e card externo do podcast; nenhum áudio do podcast incorporado à página CATS.")
