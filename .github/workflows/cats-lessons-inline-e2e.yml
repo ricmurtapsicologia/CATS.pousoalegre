@@ -5,7 +5,10 @@ on:
     branches: [main]
     paths:
       - 'presentation-originals.js'
+      - 'audio-inline.js'
+      - 'portal-ui.js'
       - 'index.html'
+      - 'assets/lessons/**'
       - 'scripts/e2e_lessons_inline.py'
       - '.github/workflows/cats-lessons-inline-e2e.yml'
   workflow_dispatch: {}
@@ -35,5 +38,5 @@ jobs:
           cat /tmp/cats-lessons-http.log
           exit 1
 
-      - name: E2E — 8 aulas, Drive anônimo, mídia inline e mobile
+      - name: E2E — 8 aulas locais, vídeos, áudios e mobile
         run: python scripts/e2e_lessons_inline.py http://127.0.0.1:8765/
