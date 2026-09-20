@@ -6,7 +6,7 @@
   const ENDPOINT = 'https://script.google.com/macros/s/AKfycbzOINm3ehG2ojEuSyFSYIuOfKciTGTg37GZ4lvC_AKfV0_00nU4GU8uxFwOpgefPTE/exec';
   const AUTO_RETRY_DELAY_MS = 4000;
   const MAX_AUTO_RETRIES = 20;
-  const CONTRACT_VERSION = '2026.09.18-r16-iso-pure';
+  const CONTRACT_VERSION = '2026.09.20-r18-analytics-v2';
 
   window.CATS_PERSISTENCE_VERIFY_URL = ENDPOINT;
   window.__CATS_PERSISTENCE_CONFIG_VERSION__ = CONTRACT_VERSION;
@@ -89,12 +89,22 @@
 
     let attempts = 0;
     let timer = 0;
+    let analyticsConfirmed = false;
+
+    const trackConfirmed = success => {
+      if (analyticsConfirmed || success?.dataset?.persistenceConfirmed !== 'true') return;
+      analyticsConfirmed = true;
+      try {
+        window.CATSAnalyticsV2?.send?.('precurso_confirmed', 'google-forms-persistence-confirmed');
+      } catch (_) {}
+    };
 
     const schedule = () => {
       const status = doc.getElementById('catsPersistenceStatus');
       const retry = doc.getElementById('catsVerifyAgain');
       const success = doc.getElementById('success');
       if (!status || !retry || !success) return;
+      trackConfirmed(success);
       if (success.dataset.persistenceConfirmed === 'true' || success.classList.contains('show')) {
         if (timer) clearTimeout(timer);
         return;
@@ -111,6 +121,7 @@
       timer = window.setTimeout(() => {
         timer = 0;
         const currentSuccess = doc.getElementById('success');
+        trackConfirmed(currentSuccess);
         if (currentSuccess?.dataset.persistenceConfirmed === 'true' || currentSuccess?.classList.contains('show')) return;
         attempts += 1;
         retry.click();
