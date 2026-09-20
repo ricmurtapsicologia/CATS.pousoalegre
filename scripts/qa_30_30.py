@@ -61,7 +61,17 @@ check("16 Cognitive-load", ".hero-card{display:none}" in portal_css and ".course
 check("17 Narrative-flow", page.find("Aulas teóricas") < page.find('data-module="1"') < page.find('data-module="8"'))
 check("18 Red-team", "baseValidas" not in page and "novasMatriculas" not in page and "terapiadoesquema" not in page)
 check("19 Edge-case", "cats-auth-failed" in auth and "cats-auth-failed" in auth_css)
-check("20 Scenario stress", "length === 11" in auth and "length === 7" in auth and "request(550)" in auth)
+# Contrato atual: matrícula de 7 dígitos é aceita por Acessar/Enter; somente CPF
+# completo de 11 dígitos usa auto-submit. Evita submissão prematura de matrícula.
+check(
+    "20 Scenario stress",
+    "Matrícula BM/PM: 7 números" in auth
+    and "CPF cadastrado: 11 números" in auth
+    and "current.length !== 11" in auth
+    and "length === 11" in auth
+    and "form.requestSubmit()" in auth
+    and "length === 7" not in auth,
+)
 check("21 Fact-check", "Capitão BM Lucas Antônio de Oliveira" in page and "7ª Cia Ind" in page)
 check("22 Source-to-claim", "oito aulas teóricas atuais" in page and "46 h/a" in page)
 check("23 Theory-only", not any(marker in page for marker in PRACTICE_MARKERS))
