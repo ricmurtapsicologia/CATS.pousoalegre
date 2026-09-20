@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import sys
 import time
-from datetime import date, timedelta
+from datetime import date
 from urllib.parse import parse_qsl
 
 from playwright.sync_api import sync_playwright
@@ -11,8 +11,6 @@ from playwright.sync_api import sync_playwright
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8765/"
 CONFIG_VERSION = "2026.09.20-r18-private-bdi"
 FIXTURE_DATE = date.today().isoformat()
-MAX_DATE = (date.today() + timedelta(days=1)).isoformat()
-MIN_DATE = (date.today() - timedelta(days=45)).isoformat()
 SESSION_KEY = "cats_pa_auth_v1"
 
 
@@ -80,8 +78,10 @@ with sync_playwright() as p:
     assert (form.get_attribute("action") or "").endswith("/formResponse")
     assert frame.locator("[required]:not([name])").count() == 0
 
-    assert frame.locator("#data").get_attribute("min") == MIN_DATE
-    assert frame.locator("#data").get_attribute("max") == MAX_DATE
+    date_field = frame.locator("#data")
+    assert date_field.get_attribute("type") == "date"
+    assert date_field.get_attribute("name") == "entry.2092238618"
+    assert date_field.get_attribute("required") is not None
     assert frame.locator("#ocorrencia option").count() == 5
     assert frame.locator("#presenciou option").count() == 5
     assert frame.locator('#ocorrencia').get_attribute('name') == 'entry.500885681'
@@ -108,7 +108,8 @@ with sync_playwright() as p:
     frame.locator("#sangue").fill("O+")
     frame.locator('input[name="entry.192985690"][value="Não."]').locator("xpath=..").click()
     assert frame.locator('input[name="entry.192985690"][value="Não."]').is_checked()
-    frame.locator("#data").fill(FIXTURE_DATE)
+    date_field.fill(FIXTURE_DATE)
+    assert date_field.input_value() == FIXTURE_DATE
     frame.locator('[data-step="1"] [data-next]').click()
     assert "active" in (frame.locator('[data-step="2"]').get_attribute("class") or "")
     assert frame.locator("#progressLabel").inner_text() == "Etapa 2 de 3"
