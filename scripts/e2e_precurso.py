@@ -9,7 +9,7 @@ from urllib.parse import parse_qsl
 from playwright.sync_api import sync_playwright
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8765/"
-CONFIG_VERSION = "2026.09.20-r18-private-bdi"
+BUILD_VERSION = "2026.09.19-r17-coord-oliveira"
 FIXTURE_DATE = date.today().isoformat()
 SESSION_KEY = "cats_pa_auth_v1"
 
@@ -88,7 +88,9 @@ with sync_playwright() as p:
     first_occurrence = frame.locator('#ocorrencia option').nth(1)
     assert first_occurrence.get_attribute('value') == 'Nunca atendi.'
     assert first_occurrence.inner_text() == 'Nunca atendi.'
-    assert frame.locator("html").evaluate("el => el.dataset.catsFormsContract") == CONFIG_VERSION
+    assert frame.locator("html").evaluate("el => el.dataset.catsBuild") == BUILD_VERSION
+    assert form.get_attribute("data-forms-linked") == "true"
+    assert form.get_attribute("data-persistence-guard") == "strict"
 
     participant_text = frame.locator("body").inner_text().lower()
     assert "bdi-ii" not in participant_text
