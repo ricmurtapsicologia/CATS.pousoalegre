@@ -9,7 +9,7 @@ from playwright.sync_api import sync_playwright
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8765/"
 PRE = BASE.rstrip("/") + "/precurso.html"
 LEGACY = BASE.rstrip("/") + "/legacy.html"
-CONFIG_VERSION = "2026.09.18-r16-iso-pure"
+CONFIG_VERSION = "2026.09.20-r18-analytics-v2"
 FIXTURE_DATE = "2026-09-18"
 
 
@@ -42,6 +42,17 @@ with sync_playwright() as p:
     assert gate.is_visible()
     assert "VIII CATS" in gate.inner_text()
     assert "Pouso Alegre" in gate.inner_text()
+    assert gate.locator("#catsAuthSubmit").count() == 1
+    assert "Use o botão Acessar ou Enter" in (gate.locator("#catsAuthHelp").inner_text() or "")
+
+    # Matrícula de 7 dígitos não pode autoenviar: evita validar prematuramente os
+    # sete primeiros dígitos de um CPF de 11 dígitos.
+    access_input = gate.locator("#catsAuthInput")
+    access_input.fill("0000000")
+    page.wait_for_timeout(700)
+    assert not page.locator("#catsAuthMessage").evaluate("el => el.classList.contains('is-visible')")
+    assert access_input.input_value() == "0000000"
+    access_input.fill("")
 
     page.wait_for_selector("#app.ready", timeout=15000)
     iframe_handle = page.locator("#app").element_handle()
@@ -189,8 +200,6 @@ with sync_playwright() as p:
     assert "intensidade moderada" not in participant_text
     assert "intensidade grave" not in participant_text
 
-    # O status técnico fica dentro do formulário, agora oculto pela tela de envio.
-    # Validamos seu conteúdo no DOM, não sua visibilidade.
     frame.wait_for_function(
         "document.getElementById('catsPersistenceStatus') && document.getElementById('catsPersistenceStatus').textContent.length > 0",
         timeout=5000,
@@ -206,7 +215,6 @@ with sync_playwright() as p:
     assert "registrada com sucesso" not in frame.locator("body").inner_text().lower()
     assert frame.locator("#submitBtn").is_disabled()
 
-    # O polling em andamento deve aceitar a confirmação oficial no próximo ciclo.
     page.evaluate("window.__catsVerifierMode = 'positive'")
     success = frame.locator("#success")
     success.wait_for(state="visible", timeout=10000)
@@ -236,4 +244,4 @@ with sync_playwright() as p:
     fresh.close()
     browser.close()
 
-print("PASS: Smoke + E2E CATS — envio imediato sem falso positivo, confirmação independente, boas-vindas finais e BDI-II ausente do navegador.")
+print("PASS: Smoke + E2E CATS — acesso sem autoenvio prematuro aos 7 dígitos, envio imediato sem falso positivo, confirmação independente, boas-vindas finais e BDI-II ausente do navegador.")
