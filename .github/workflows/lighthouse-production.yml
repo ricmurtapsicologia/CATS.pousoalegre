@@ -5,11 +5,21 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/lighthouse-production.yml'
+      - 'index.html'
       - 'precurso.html'
       - 'legacy.html'
       - 'persistence-config.js'
       - 'cats-auth.js'
       - 'cats-auth.css'
+      - 'portal-ui.js'
+      - 'portal-ui-core.js'
+      - 'portal-ui.css'
+      - 'presentation-originals.js'
+      - 'assets/lessons/**'
+      - 'scripts/finalize_theory_surface.py'
+      - 'scripts/qa_6_6_portal.py'
+      - 'scripts/smoke_portal.py'
+      - 'scripts/e2e_release.py'
   workflow_dispatch: {}
 
 permissions:
@@ -38,11 +48,26 @@ jobs:
         env:
           TARGET_URL: ${{ matrix.url }}
         run: |
-          for i in {1..18}; do
+          for i in {1..24}; do
             if curl -fsSL --max-time 20 "$TARGET_URL" >/dev/null; then exit 0; fi
             sleep 10
           done
           exit 1
+
+      - name: Smoke de produção — portal e 8 aulas
+        if: matrix.slug == 'cats-pouso-alegre'
+        run: |
+          set -euo pipefail
+          BASE='https://ricmurtapsicologia.github.io/CATS.pousoalegre'
+          curl -fsSL --max-time 20 "$BASE/" | grep -q 'VIII CATS 2026'
+          curl -fsSL --max-time 20 "$BASE/presentation-originals.js" | grep -q "viewer:'local-pdf'"
+          for n in 01 02 03 04 05 06 07 08; do
+            file="$(mktemp)"
+            curl -fsSL --max-time 30 "$BASE/assets/lessons/aula-$n.pdf" -o "$file"
+            head -c 5 "$file" | grep -q '%PDF-'
+            test "$(wc -c < "$file")" -gt 10000
+            rm -f "$file"
+          done
 
       - name: Executar Lighthouse
         env:
@@ -53,13 +78,17 @@ jobs:
             --only-categories=performance,accessibility,best-practices,seo \
             --output=json --output-path=lighthouse.json --quiet
 
-      - name: Resumo e achados
+      - name: Resumo, achados e gate mínimo
         run: |
           node <<'NODE'
           const fs=require('fs');
           const r=JSON.parse(fs.readFileSync('lighthouse.json','utf8'));
           console.log('LIGHTHOUSE_SCORES');
-          for (const [k,v] of Object.entries(r.categories)) console.log(`${k}=${Math.round(v.score*100)}`);
+          const scores={};
+          for (const [k,v] of Object.entries(r.categories)) {
+            scores[k]=Math.round(v.score*100);
+            console.log(`${k}=${scores[k]}`);
+          }
           console.log('LIGHTHOUSE_FINDINGS');
           const rows=[];
           for (const [id,a] of Object.entries(r.audits)) {
@@ -69,10 +98,20 @@ jobs:
           }
           rows.sort((a,b)=>(a.score??1)-(b.score??1)||b.impact-a.impact);
           for (const x of rows.slice(0,40)) console.log(JSON.stringify(x));
+
+          const minimum={performance:70,accessibility:90,'best-practices':90,seo:90};
+          const failed=Object.entries(minimum).filter(([k,min]) => (scores[k]??0) < min);
+          if (failed.length) {
+            console.error('LIGHTHOUSE_GATE_FAIL', failed.map(([k,min])=>`${k}<${min}`).join(', '));
+            process.exit(1);
+          }
+          console.log('LIGHTHOUSE_GATE_PASS');
           NODE
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: lighthouse-${{ matrix.slug }}
           path: lighthouse.json
+          if-no-files-found: ignore
           retention-days: 7
