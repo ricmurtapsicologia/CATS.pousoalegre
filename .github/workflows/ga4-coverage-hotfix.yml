@@ -19,45 +19,72 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
-      - name: Apply GA4 instrumentation to both CATS pages
+      - name: Apply canonical GA4 instrumentation
         run: |
           python - <<'PY'
           from pathlib import Path
-          targets = {'index.html':'cats-pouso-alegre','precurso.html':'cats-precurso'}
-          for filename, page_id in targets.items():
-              p = Path(filename)
-              s = p.read_text(encoding='utf-8')
-              marker = f'<meta name="ric-analytics-page" content="{page_id}">'
-              if marker not in s:
-                  block = f'''\n  <meta name="ric-analytics-page" content="{page_id}">\n  <meta name="ric-analytics-privacy" content="public">\n  <script src="https://ricmurtapsicologia.github.io/RPD/assets/js/ric-analytics.js?v=1.1.3" defer></script>\n'''
-                  if '</head>' not in s:
-                      raise SystemExit(f'{filename}: </head> ausente')
-                  p.write_text(s.replace('</head>', block + '</head>', 1), encoding='utf-8')
+          import re
+
+          GA='G-N1GEBDNZ8B'
+          CORE='https://ricmurtapsicologia.github.io/RPD/assets/js/ric-analytics.js?v=1.1.3'
+
+          def normalize(filename, page_id):
+              p=Path(filename)
+              s=p.read_text(encoding='utf-8')
+              # Remove the legacy direct GA block if present. Shared RIC core owns GA4.
+              s=re.sub(
+                  r'\n\s*<!-- Google Analytics \(defer\) -->\s*'
+                  r'<script defer src="https://www\.googletagmanager\.com/gtag/js\?id=G-38D052F915"></script>\s*'
+                  r'<script>\s*window\.dataLayer = window\.dataLayer \|\| \[\];\s*'
+                  r'function gtag\(\)\{ dataLayer\.push\(arguments\); \}\s*'
+                  r"gtag\('js', new Date\(\)\);\s*gtag\('config', 'G-38D052F915'\);\s*</script>\s*",
+                  '\n', s, count=1, flags=re.S)
+              # Remove any stale RIC analytics tags, then add one canonical block.
+              s=re.sub(r'\n?\s*<meta name="ric-analytics-page"[^>]*>\s*', '\n', s)
+              s=re.sub(r'\n?\s*<meta name="ric-analytics-privacy"[^>]*>\s*', '\n', s)
+              s=re.sub(r'\n?\s*<meta name="ric-analytics-ga"[^>]*>\s*', '\n', s)
+              s=re.sub(r'\n?\s*<script[^>]+ric-analytics\.js\?v=[^"\']+["\'][^>]*></script>\s*', '\n', s)
+              block=(f'\n  <meta name="ric-analytics-page" content="{page_id}">\n'
+                     f'  <meta name="ric-analytics-privacy" content="public">\n'
+                     f'  <meta name="ric-analytics-ga" content="{GA}">\n'
+                     f'  <script src="{CORE}" defer></script>\n')
+              if '</head>' not in s:
+                  raise SystemExit(f'{filename}: </head> ausente')
+              s=s.replace('</head>', block+'</head>', 1)
+              p.write_text(s, encoding='utf-8')
+
+          normalize('index.html','cats-pouso-alegre')
+          normalize('precurso.html','cats-precurso')
           PY
-      - name: Commit patch to hotfix branch when needed
+      - name: Validate canonical coverage and privacy boundary
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          GA='G-N1GEBDNZ8B'
+          checks={'index.html':'cats-pouso-alegre','precurso.html':'cats-precurso'}
+          for filename,page_id in checks.items():
+              s=Path(filename).read_text(encoding='utf-8')
+              assert s.count(f'<meta name="ric-analytics-page" content="{page_id}">') == 1
+              assert s.count('<meta name="ric-analytics-privacy" content="public">') == 1
+              assert s.count(f'<meta name="ric-analytics-ga" content="{GA}">') == 1
+              assert s.count('ric-analytics.js?v=1.1.3') == 1
+              assert 'G-38D052F915' not in s, f'{filename}: legacy property remains'
+              assert 'googletagmanager.com/gtag/js?id=' not in s, f'{filename}: direct GA tag remains'
+          # Sensitive pre-course form values remain outside analytics: no field names wired into RIC tags.
+          pre=Path('precurso.html').read_text(encoding='utf-8')
+          block=pre[pre.index('<meta name="ric-analytics-page"'):pre.index('</head>')]
+          for forbidden in ['CPF','BDI','alerg','sangue','diagn']:
+              assert forbidden.lower() not in block.lower()
+          print('CATS_GA4_COVERAGE_OK')
+          PY
+      - name: Commit content patch to hotfix branch
         run: |
           if git diff --quiet -- index.html precurso.html; then
             echo 'No content patch needed.'
-          else
-            git config user.name 'ricmurtapsicologia'
-            git config user.email '164411318+ricmurtapsicologia@users.noreply.github.com'
-            git add index.html precurso.html
-            git commit -m 'hotfix: instrument CATS and pre-course with GA4 core'
-            git push origin HEAD:hotfix/ga4-coverage-20260920
+            exit 0
           fi
-      - name: Validate GA4 instrumentation
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          checks = {'index.html':'cats-pouso-alegre','precurso.html':'cats-precurso'}
-          for filename, page_id in checks.items():
-              s = Path(filename).read_text(encoding='utf-8')
-              counts = {
-                  'page': s.count(f'<meta name="ric-analytics-page" content="{page_id}">'),
-                  'privacy': s.count('<meta name="ric-analytics-privacy" content="public">'),
-                  'core': s.count('ric-analytics.js?v=1.1.3'),
-              }
-              print(filename, counts)
-              assert counts == {'page':1,'privacy':1,'core':1}, (filename, counts)
-          print('CATS_GA4_COVERAGE_OK')
-          PY
+          git config user.name 'ricmurtapsicologia'
+          git config user.email '164411318+ricmurtapsicologia@users.noreply.github.com'
+          git add index.html precurso.html
+          git commit -m 'hotfix: unify CATS GA4 on canonical property'
+          git push origin HEAD:hotfix/ga4-coverage-20260920
