@@ -166,27 +166,22 @@ with sync_playwright() as p:
     assert "Envio realizado" in pending_text
     assert "confirmando o registro" in pending_text.lower()
 
-    # Inicia explicitamente a confirmação no iframe oculto. O interceptor do
-    # POST não reproduz o evento de navegação de modo idêntico em todo runner.
     response_frame = frame.locator("#google-response")
     response_frame.evaluate("el => el.dispatchEvent(new Event('load'))")
 
-    # A resposta com Sheet divergente deve permanecer fail-closed durante toda
-    # a janela de verificação. Esperamos a janela real expirar e comprovamos
-    # diretamente que nenhuma confirmação positiva foi exibida.
     success = frame.locator("#success")
     page.wait_for_timeout(7500)
     assert success.get_attribute("data-persistence-confirmed") != "true"
     assert not success.is_visible()
 
-    # Rechecagem positiva: mesma submissão, agora com identificadores válidos.
     page.evaluate("window.__catsVerifierMode='positive'")
     response_frame.evaluate("el => el.dispatchEvent(new Event('load'))")
     success.wait_for(state="visible", timeout=7000)
     assert success.get_attribute("data-persistence-confirmed") == "true"
+    assert not form.is_visible()
     success_text = success.inner_text()
-    assert "Preenchimento confirmado" in success_text
-    assert "Dados gravados na planilha oficial de respostas." in success_text
+    assert "Inscrição registrada" in success_text
+    assert "Os dados foram enviados com sucesso" in success_text
     final_participant_text = frame.locator("body").inner_text().lower()
     assert "bdi-ii" not in final_participant_text
 
@@ -198,7 +193,6 @@ with sync_playwright() as p:
     assert payload.get("entry.192985690") == "Não."
     assert all(name in payload for name in names), "Campos clínicos ausentes no POST"
 
-    # Nenhuma resposta clínica/BDI-II deve ser persistida em storages do navegador.
     storage_dump = page.evaluate("JSON.stringify({local:{...localStorage},session:{...sessionStorage}})")
     assert "entry.626004811" not in storage_dump
     assert "bdi" not in storage_dump.lower()
