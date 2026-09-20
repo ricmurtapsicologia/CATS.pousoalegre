@@ -171,8 +171,13 @@ with sync_playwright() as p:
     assert success.get_attribute("data-persistence-confirmed") != "true"
     assert not success.is_visible()
 
+    # O retry só é habilitado quando a primeira janela de verificação termina.
+    verify_again = frame.locator("#catsVerifyAgain")
+    verify_again.wait_for(state="visible", timeout=7000)
+    assert not verify_again.is_disabled()
+
     page.evaluate("window.__catsVerifierMode='positive'")
-    frame.locator("#catsVerifyAgain").click()
+    verify_again.click()
     success.wait_for(state="visible", timeout=7000)
     assert success.get_attribute("data-persistence-confirmed") == "true"
     success_text = success.inner_text()
