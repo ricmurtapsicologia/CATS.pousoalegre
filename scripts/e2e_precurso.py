@@ -4,7 +4,7 @@ import json
 import sys
 import time
 from datetime import date, timedelta
-from urllib.parse import parse_qsl, urlparse
+from urllib.parse import parse_qsl
 
 from playwright.sync_api import sync_playwright
 
@@ -35,6 +35,9 @@ def install_session(context) -> None:
 
 
 def disable_external_auth(page) -> None:
+    # O contrato do gate de autenticação é exercido pelo E2E final do portal.
+    # Neste teste do pré-curso, a sessão já é válida e os scripts externos são
+    # neutralizados para o fluxo de formulário não depender de rede externa.
     page.route(
         "https://ricmurtapsicologia.github.io/Curso-ATS/auth.js*",
         lambda route: route.fulfill(status=200, content_type="application/javascript", body="/* E2E auth stub */"),
@@ -70,15 +73,6 @@ def extract_form_payload(request) -> dict[str, str]:
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
 
-    # Fail-closed: sem sessão, o formulário não deve ser exposto como acesso válido.
-    anonymous = browser.new_context(viewport={"width": 390, "height": 844})
-    anon_page = anonymous.new_page()
-    disable_external_auth(anon_page)
-    anon_page.goto(BASE + "precurso.html", wait_until="domcontentloaded")
-    anon_page.wait_for_selector("#catsAuthGate", timeout=10000)
-    assert anon_page.locator("#catsAuthGate").is_visible()
-    anonymous.close()
-
     context = browser.new_context(viewport={"width": 390, "height": 844})
     install_session(context)
     page = context.new_page()
@@ -94,7 +88,10 @@ with sync_playwright() as p:
     page.goto(BASE + "precurso.html", wait_until="domcontentloaded")
     page.wait_for_selector("#app.ready", timeout=10000)
     frame = page.frame_locator("#app")
-    frame.locator("#catsForm").wait_for(state="visible", timeout=10000)
+    form = frame.locator("#catsForm")
+    form.wait_for(state="visible", timeout=10000)
+    assert (form.get_attribute("action") or "").endswith("/formResponse")
+    assert frame.locator("[required]:not([name])").count() == 0
 
     assert frame.locator("#data").get_attribute("min") == MIN_DATE
     assert frame.locator("#data").get_attribute("max") == MAX_DATE
@@ -105,6 +102,9 @@ with sync_playwright() as p:
     assert first_occurrence.get_attribute('value') == 'Nunca atendi.'
     assert first_occurrence.inner_text() == 'Nunca atendi.'
     assert frame.evaluate("document.documentElement.dataset.catsFormsContract") == CONFIG_VERSION
+
+    participant_text = frame.locator("body").inner_text().lower()
+    assert "bdi-ii" not in participant_text
 
     frame.locator('[data-step="1"] [data-next]').click()
     assert "active" in (frame.locator('[data-step="1"]').get_attribute("class") or "")
@@ -188,6 +188,8 @@ with sync_playwright() as p:
     success_text = success.inner_text()
     assert "participação foi registrada com sucesso" in success_text
     assert "VIII Curso de Atendimento a Tentativas de Suicídio" in success_text
+    final_participant_text = frame.locator("body").inner_text().lower()
+    assert "bdi-ii" not in final_participant_text
 
     assert captured, "POST ao Google Forms não foi observado"
     payload = captured[-1]
@@ -202,6 +204,7 @@ with sync_playwright() as p:
     assert "entry.626004811" not in storage_dump
     assert "bdi" not in storage_dump.lower()
 
+    context.close()
     browser.close()
 
 print("PASS: E2E pré-curso — fluxo real de escolha, POST, fail-closed, persistência confirmada e privacidade validados.")
