@@ -2,10 +2,10 @@
   "use strict";
 
   /*
-   * CATS Pouso Alegre 2026 — apresentações canônicas vigentes.
-   * Fonte canônica dos decks: pasta 05 Aulas PPT teóricas / 2026.
-   * Mantém os arquivos PPTX originais no Drive e evita o /presentation/embed,
-   * que pode alterar a renderização de arquivos do PowerPoint.
+   * VIII CATS Pouso Alegre 2026 — apresentações canônicas vigentes.
+   * Aulas 3–7 apontam para a pasta oficial compartilhada do CATS 2026.
+   * Todas as apresentações são abertas dentro do próprio portal por preview
+   * do Google Drive, sem redirecionamento para nova aba.
    */
   const DECKS = Object.freeze({
     "1": {
@@ -18,11 +18,23 @@
     },
     "3": {
       title: "Abordagem Técnica: Aspectos Gerais",
-      id: "1N_KATaJiVIMsFyXBHMJ44nkwhkfdQvJU"
+      id: "1GuEU435vhorxZt42dAEurX2mVopFpFEz"
     },
     "4": {
       title: "Abordagem Técnica: Aspectos Específicos",
-      id: "1wE_p3OJjCrRV6S1JN3G6z27L93mDlwUd"
+      id: "1kiKcOToIu1tKJRzWFVmARJYPP3N4J0S_"
+    },
+    "5": {
+      title: "Abordagem Técnica: Comunicação Dissuasiva",
+      id: "1AasaqZYAqBZJtoNCOh8e6TyBeb_11Fm-"
+    },
+    "6": {
+      title: "Abordagem Tática",
+      id: "1SNvZyrliydPk6iTkwAKhZ66FZ9AO7ac9"
+    },
+    "7": {
+      title: "Gestão em ATS",
+      id: "1hx-CVfbGbCzen1Ygc0-9lTHm81xVcaxw"
     },
     "8": {
       title: "Prevenção ao Comportamento Suicida",
@@ -30,42 +42,98 @@
     }
   });
 
-  const driveView = id => `https://drive.google.com/file/d/${id}/view`;
+  const CARD_IMAGES = Object.freeze({
+    "5": {
+      original: "https://i.pinimg.com/originals/44/c7/d2/44c7d24202a6aa571b7c548ac02fa467.jpg",
+      fallback: "https://i.pinimg.com/736x/44/c7/d2/44c7d24202a6aa571b7c548ac02fa467.jpg",
+      alt: "Bombeiros em atuação de apoio e comunicação durante atendimento de emergência"
+    },
+    "6": {
+      original: "https://i.pinimg.com/originals/3d/d7/44/3dd744f00802e7b721f8ae69199652fd.jpg",
+      fallback: "https://i.pinimg.com/736x/3d/d7/44/3dd744f00802e7b721f8ae69199652fd.jpg",
+      alt: "Bombeiro em cenário de resgate técnico em altura"
+    }
+  });
+
   const drivePreview = id => `https://drive.google.com/file/d/${id}/preview`;
-  const driveDownload = id => `https://drive.google.com/uc?export=download&id=${id}`;
+
+  function ensureAccessLink(card, module, deck){
+    const actions = card.querySelector('.actions');
+    if(!actions) return null;
+
+    let link = actions.querySelector('a.open-slide, .open-slide');
+    if(link && link.tagName !== 'A'){
+      const replacement = document.createElement('a');
+      replacement.className = link.className;
+      [...link.attributes].forEach(attr=>replacement.setAttribute(attr.name, attr.value));
+      replacement.innerHTML = link.innerHTML;
+      link.replaceWith(replacement);
+      link = replacement;
+    }
+
+    if(!link){
+      const note = actions.querySelector('.practice-note');
+      link = document.createElement('a');
+      link.className = 'btn small open-slide';
+      link.href = '#';
+      link.innerHTML = '<i class="ri-presentation-line" aria-hidden="true"></i> Acessar aula';
+      if(note) note.replaceWith(link);
+      else actions.prepend(link);
+    }
+
+    link.dataset.slideId = deck.id;
+    link.dataset.originalPptx = 'true';
+    link.dataset.module = module;
+    link.href = '#';
+    link.removeAttribute('target');
+    link.removeAttribute('download');
+    link.setAttribute('role','button');
+    link.setAttribute('aria-label', `Assistir aula na página: ${deck.title}`);
+    return link;
+  }
 
   function applyCanonicalDecks(){
     Object.entries(DECKS).forEach(([module, deck])=>{
       const card = document.querySelector(`#cards article[data-module="${module}"]`);
       if(!card) return;
-      const link = card.querySelector('a.open-slide');
-      if(!link) return;
-      link.dataset.slideId = deck.id;
-      link.dataset.originalPptx = "true";
-      link.href = driveView(deck.id);
-      link.setAttribute('aria-label', `Abrir apresentação original: ${deck.title}`);
+      ensureAccessLink(card, module, deck);
     });
   }
 
-  function ensureDownloadButton(id){
-    const controls = document.querySelector('#slidesViewer .controls');
+  function applyCardImages(){
+    Object.entries(CARD_IMAGES).forEach(([module, cfg])=>{
+      const img = document.querySelector(`#cards article[data-module="${module}"] .media img`);
+      if(!img) return;
+      img.removeAttribute('srcset');
+      img.removeAttribute('sizes');
+      img.alt = cfg.alt;
+      img.decoding = 'async';
+      img.loading = 'lazy';
+      img.dataset.catsImageSource = 'Pinterest';
+      img.onerror = ()=>{
+        if(img.src !== cfg.fallback){
+          img.onerror = null;
+          img.src = cfg.fallback;
+        }
+      };
+      img.src = cfg.original;
+    });
+  }
+
+  function hardenViewer(viewer, frame){
     const external = document.getElementById('openExternal');
-    if(!controls || !external) return;
+    const download = document.getElementById('downloadOriginalPptx');
+    if(external) external.remove();
+    if(download) download.remove();
 
-    external.href = driveView(id);
-    external.innerHTML = '<i class="ri-external-link-line"></i> Abrir original';
-
-    let download = document.getElementById('downloadOriginalPptx');
-    if(!download){
-      download = document.createElement('a');
-      download.id = 'downloadOriginalPptx';
-      download.className = 'btn ghost';
-      download.target = '_blank';
-      download.rel = 'noopener';
-      download.innerHTML = '<i class="ri-download-2-line"></i> PPTX original';
-      external.insertAdjacentElement('afterend', download);
+    const controls = viewer?.querySelector('.controls');
+    if(controls){
+      controls.querySelectorAll('a[target="_blank"], a[download]').forEach(el=>el.remove());
     }
-    download.href = driveDownload(id);
+
+    frame.setAttribute('allow', 'autoplay; fullscreen; encrypted-media; picture-in-picture');
+    frame.setAttribute('allowfullscreen', '');
+    frame.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
   }
 
   function openOriginalDeck(link){
@@ -73,7 +141,7 @@
     if(!id) return;
 
     const card = link.closest('.card');
-    const title = card?.querySelector('h3')?.textContent || 'CATS 2026';
+    const title = card?.querySelector('h3')?.textContent?.trim() || 'CATS 2026';
     const viewer = document.getElementById('slidesViewer');
     const frame = document.getElementById('slidesFrame');
     const heading = document.getElementById('slidesTitle');
@@ -81,29 +149,24 @@
     const next = document.getElementById('nextSlide');
     const tip = viewer?.querySelector('.tip');
 
-    if(!viewer || !frame || !heading) {
-      window.open(driveView(id), '_blank', 'noopener');
-      return;
-    }
+    /* Fail-closed: nunca redireciona o aluno para outra aba. */
+    if(!viewer || !frame || !heading) return;
 
-    heading.textContent = `Apresentação original – ${title}`;
+    heading.textContent = title;
     frame.src = drivePreview(id);
-    frame.title = `Apresentação original em PowerPoint — ${title}`;
+    frame.title = `Apresentação do VIII CATS — ${title}`;
+    hardenViewer(viewer, frame);
+
     if(prev) prev.hidden = true;
     if(next) next.hidden = true;
-    if(tip) tip.textContent = 'Use os controles do visualizador para navegar pelos slides.';
-    ensureDownloadButton(id);
+    if(tip) tip.textContent = 'Navegue pelos slides usando os controles do visualizador. Vídeos e áudios compatíveis são reproduzidos no próprio quadro.';
 
     if(!viewer.open) viewer.showModal();
     document.documentElement.style.overflow = 'hidden';
     setTimeout(()=>frame.focus(), 120);
   }
 
-  /*
-   * Paridade de vídeos com a página ATS.
-   * AS IS: pasta expansível -> grade oculta -> player.
-   * TO BE: seção visível -> card 16:9 -> play direto no iframe do YouTube.
-   */
+  /* Vídeos de apoio inline, sem pasta intermediária e sem download oferecido. */
   const VIDEO_ALLOW = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
 
   function installATSVideoStyles(){
@@ -148,6 +211,7 @@
     iframe.title = title;
     iframe.setAttribute('allow', VIDEO_ALLOW);
     iframe.setAttribute('allowfullscreen', '');
+    iframe.setAttribute('referrerpolicy','strict-origin-when-cross-origin');
     iframe.removeAttribute('width');
     iframe.removeAttribute('height');
 
@@ -183,7 +247,7 @@
 
     const head = document.createElement('div');
     head.className = 'ats-video-head';
-    head.innerHTML = '<span class="ats-video-kicker">Vídeos</span><h2 class="ats-video-title" id="videos-title">Vídeos de apoio</h2><p class="ats-video-text">Conteúdos selecionados para revisão e aprofundamento.</p>';
+    head.innerHTML = '<span class="ats-video-kicker">Vídeos</span><h2 class="ats-video-title" id="videos-title">Vídeos de apoio</h2><p class="ats-video-text">Conteúdos selecionados para revisão e aprofundamento, reproduzidos diretamente nesta página.</p>';
 
     const box = document.createElement('div');
     box.className = 'videos-box';
@@ -194,13 +258,21 @@
     installATSVideoStyles();
   }
 
-  applyCanonicalDecks();
-  applyATSVideoExperience();
+  /* Remove oferta de download para mídia HTML5 existente no portal. */
+  function hardenInlineMedia(){
+    document.querySelectorAll('audio, video').forEach(media=>{
+      media.setAttribute('controlsList','nodownload noremoteplayback');
+      media.setAttribute('disableRemotePlayback','');
+      media.addEventListener('contextmenu', event=>event.preventDefault());
+    });
+  }
 
-  /*
-   * Captura antes do listener legado do index.html. Assim o arquivo PPTX é exibido
-   * pelo visualizador de arquivo do Drive, e não pelo Google Slides /embed.
-   */
+  applyCanonicalDecks();
+  applyCardImages();
+  applyATSVideoExperience();
+  hardenInlineMedia();
+
+  /* Captura antes dos listeners legados: a aula sempre permanece no portal. */
   document.addEventListener('click', event=>{
     const link = event.target.closest?.('a.open-slide[data-original-pptx="true"]');
     if(!link) return;
@@ -210,12 +282,20 @@
   }, true);
 
   window.CATSPousoAlegreOriginalDecks = DECKS;
+  window.CATSPousoAlegreInlineDeckMode = Object.freeze({
+    inline: true,
+    externalNavigation: false,
+    downloadButton: false,
+    viewer: 'google-drive-preview',
+    mediaAllow: 'autoplay; fullscreen; encrypted-media; picture-in-picture'
+  });
   window.CATSPousoAlegreVideoMode = Object.freeze({
     pattern: 'ATS-inline-youtube',
     directPlay: true,
     folderGate: false,
     aspectRatio: '16/9',
     desktopColumns: 3,
-    mobileColumns: 1
+    mobileColumns: 1,
+    downloadOffered: false
   });
 })();
