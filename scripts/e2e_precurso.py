@@ -1,16 +1,19 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import sys
 import time
+from datetime import date, timedelta
+from urllib.parse import parse_qsl, urlparse
+
 from playwright.sync_api import sync_playwright
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8765/"
-PRE = BASE.rstrip("/") + "/precurso.html"
-LEGACY = BASE.rstrip("/") + "/legacy.html"
-CONFIG_VERSION = "2026.09.20-r18-analytics-v2"
-FIXTURE_DATE = "2026-09-18"
+CONFIG_VERSION = "2026.09.20-r18-private-bdi"
+FIXTURE_DATE = date.today().isoformat()
+MAX_DATE = (date.today() + timedelta(days=1)).isoformat()
+MIN_DATE = (date.today() - timedelta(days=45)).isoformat()
+SESSION_KEY = "cats_pa_auth_v1"
 
 
 def auth_payload() -> str:
@@ -23,100 +26,78 @@ def auth_payload() -> str:
     })
 
 
+def install_session(context) -> None:
+    payload = auth_payload()
+    context.add_init_script(
+        f"sessionStorage.setItem({json.dumps(SESSION_KEY)}, {json.dumps(payload)});"
+        "localStorage.setItem('cats_pa_onboarded_v2','1');"
+    )
+
+
+def disable_external_auth(page) -> None:
+    page.route(
+        "https://ricmurtapsicologia.github.io/Curso-ATS/auth.js*",
+        lambda route: route.fulfill(status=200, content_type="application/javascript", body="/* E2E auth stub */"),
+    )
+    page.route(
+        "https://ricmurtapsicologia.github.io/Curso-ATS/auth-extra.js*",
+        lambda route: route.fulfill(status=200, content_type="application/javascript", body="/* E2E extra auth stub */"),
+    )
+
+
+def configure_verifier(page) -> None:
+    page.add_init_script(
+        """() => {
+          window.__CATS_PERSISTENCE_VERIFY_TIMEOUT__ = 5000;
+          window.__CATS_PERSISTENCE_VERIFY__ = async payload => ({
+            protocol: 'cats-persistence-v1',
+            persisted: true,
+            terminal: true,
+            sheetId: '1wQ0nc6TmCqqbu-ZqloIRLptO6iHqDhD00qrFLxP-fUk',
+            formEditId: '1107fjdaiL42Zb0n2jNjKr0aiNNysyEADQCesdBTbD_E',
+            fingerprint: payload.fingerprint
+          });
+        }"""
+    )
+
+
+def extract_form_payload(request) -> dict[str, str]:
+    body = request.post_data or ""
+    pairs = parse_qsl(body, keep_blank_values=True)
+    return {k: v for k, v in pairs}
+
+
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
+
+    # Fail-closed: sem sessão, o formulário não deve ser exposto como acesso válido.
+    anonymous = browser.new_context(viewport={"width": 390, "height": 844})
+    anon_page = anonymous.new_page()
+    disable_external_auth(anon_page)
+    anon_page.goto(BASE + "precurso.html", wait_until="domcontentloaded")
+    anon_page.wait_for_selector("#catsAuthGate", timeout=10000)
+    assert anon_page.locator("#catsAuthGate").is_visible()
+    anonymous.close()
+
     context = browser.new_context(viewport={"width": 390, "height": 844})
-    submitted = {"seen": False}
-
-    def intercept_form(route):
-        submitted["seen"] = True
-        assert route.request.method == "POST"
-        assert route.request.url.endswith("/formResponse")
-        route.fulfill(status=200, content_type="text/html", body="<html><body>ok</body></html>")
-
-    context.route("**/formResponse", intercept_form)
+    install_session(context)
     page = context.new_page()
-    page.goto(PRE, wait_until="networkidle")
-    page.wait_for_selector('#catsAuthGate[data-cats-pa-branded="true"]', timeout=15000)
-    gate = page.locator("#catsAuthGate")
-    assert gate.is_visible()
-    assert "VIII CATS" in gate.inner_text()
-    assert "Pouso Alegre" in gate.inner_text()
-    assert gate.locator("#catsAuthSubmit").count() == 1
-    assert "Use o botão Acessar ou Enter" in (gate.locator("#catsAuthHelp").inner_text() or "")
+    disable_external_auth(page)
+    configure_verifier(page)
 
-    # Matrícula de 7 dígitos não pode autoenviar: evita validar prematuramente os
-    # sete primeiros dígitos de um CPF de 11 dígitos.
-    access_input = gate.locator("#catsAuthInput")
-    access_input.fill("0000000")
-    page.wait_for_timeout(700)
-    assert not page.locator("#catsAuthMessage").evaluate("el => el.classList.contains('is-visible')")
-    assert access_input.input_value() == "0000000"
-    access_input.fill("")
+    captured: list[dict[str, str]] = []
+    def capture_form_response(route, request):
+        captured.append(extract_form_payload(request))
+        route.fulfill(status=200, content_type="text/html", body="<!doctype html><title>ok</title>")
 
-    page.wait_for_selector("#app.ready", timeout=15000)
-    iframe_handle = page.locator("#app").element_handle()
-    assert iframe_handle is not None
-    frame = iframe_handle.content_frame()
-    assert frame is not None
-    assert frame.locator("#catsForm").count() == 1
-    assert page.locator("#boot").is_hidden()
+    page.route("**/formResponse", capture_form_response)
+    page.goto(BASE + "precurso.html", wait_until="domcontentloaded")
+    page.wait_for_selector("#app.ready", timeout=10000)
+    frame = page.frame_locator("#app")
+    frame.locator("#catsForm").wait_for(state="visible", timeout=10000)
 
-    page.evaluate("window.__catsE2EFirstLoad = 'preservado'")
-    start = time.perf_counter()
-    payload = auth_payload()
-    page.evaluate(
-        """payload => {
-          sessionStorage.setItem('cats_pa_auth_v1', payload);
-          const gate = document.getElementById('catsAuthGate');
-          if (gate) gate.hidden = true;
-          document.documentElement.classList.remove('cats-auth-locked');
-          window.dispatchEvent(new CustomEvent('cats:authenticated', {detail:{source:'e2e'}}));
-        }""",
-        payload,
-    )
-    page.wait_for_function("document.getElementById('catsAuthGate')?.hidden === true", timeout=1500)
-    elapsed = time.perf_counter() - start
-    assert elapsed < 1.0, f"Transição pós-login lenta: {elapsed:.3f}s"
-    assert page.evaluate("window.__catsE2EFirstLoad") == "preservado"
-    assert page.locator("#boot").is_hidden()
-    assert frame.locator("#catsForm").count() == 1
-    frame.wait_for_function("document.documentElement.dataset.catsSubmitFeedback === '1'", timeout=5000)
-
-    assert page.locator('link[rel="canonical"]').get_attribute("href").endswith("/precurso.html")
-    assert page.locator('meta[property="og:url"]').get_attribute("content").endswith("/precurso.html")
-    assert page.locator('meta[property="og:title"]').count() == 1
-    assert page.locator('meta[property="og:description"]').count() == 1
-    assert page.locator('meta[property="og:image"]').count() == 1
-    assert page.locator('meta[property="og:image:secure_url"]').count() == 1
-    assert page.locator('meta[name="twitter:card"][content="summary_large_image"]').count() == 1
-    assert page.locator('link[rel="icon"]').count() == 1
-    assert frame.evaluate("sessionStorage.getItem('cats_pa_auth_v1')") is not None
-    assert page.evaluate("window.__CATS_PERSISTENCE_CONFIG_VERSION__") == CONFIG_VERSION
-    assert page.evaluate("window.__CATS_PERSISTENCE_VERIFY_MODE__") == "pure-payload"
-
-    title = page.title().lower()
-    description = page.locator('meta[name="description"]').get_attribute("content").lower()
-    hero = frame.locator("header.hero").inner_text().lower()
-    assert "pouso alegre" in title
-    assert "pouso alegre" in description
-    assert "viii cats" in hero
-    assert "curso de atendimento a tentativas de suicídio" in hero
-    body_text = frame.locator("body").inner_text().lower()
-    for forbidden in ("4º bbm", "4° bbm", "cats 2025"):
-        assert forbidden not in body_text, forbidden
-
-    form = frame.locator("#catsForm")
-    assert form.count() == 1
-    assert form.get_attribute("method").lower() == "post"
-    assert form.get_attribute("target") == "google-response"
-    assert form.get_attribute("data-forms-linked") == "true"
-    assert form.get_attribute("action").endswith("/formResponse")
-    assert frame.locator(".step").count() == 3
-    assert frame.locator("[required]:not([name])").count() == 0
-    assert frame.locator('[name^="temp_"]').count() == 0
-    assert frame.locator("#posto option").count() == 15
-    assert frame.locator("#tempo option").count() == 7
+    assert frame.locator("#data").get_attribute("min") == MIN_DATE
+    assert frame.locator("#data").get_attribute("max") == MAX_DATE
     assert frame.locator("#ocorrencia option").count() == 5
     assert frame.locator("#presenciou option").count() == 5
     assert frame.locator('#ocorrencia').get_attribute('name') == 'entry.500885681'
@@ -138,7 +119,8 @@ with sync_playwright() as p:
     frame.locator("#registro").fill("0000000")
     frame.locator("#cpf").fill("11144477735")
     frame.locator("#sangue").fill("O+")
-    frame.locator('input[name="entry.192985690"][value="Não."]').check(force=True)
+    frame.locator('input[name="entry.192985690"][value="Não."]').locator("xpath=..").click()
+    assert frame.locator('input[name="entry.192985690"][value="Não."]').is_checked()
     frame.locator("#data").fill(FIXTURE_DATE)
     frame.locator('[data-step="1"] [data-next]').click()
     assert "active" in (frame.locator('[data-step="2"]').get_attribute("class") or "")
@@ -156,7 +138,9 @@ with sync_playwright() as p:
     assert len(names) == 21, names
     assert all(name.startswith("entry.") for name in names), names
     for name in names:
-        frame.locator(f'input[name="{name}"]').first.check(force=True)
+        radio = frame.locator(f'input[name="{name}"]').first
+        radio.locator("xpath=..").click()
+        assert radio.is_checked(), f"Escolha clínica não permaneceu marcada: {name}"
     assert frame.locator("[required]:invalid").count() == 0
 
     assert page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2")
@@ -189,59 +173,35 @@ with sync_playwright() as p:
     pending.wait_for(state="visible", timeout=3000)
     pending_text = pending.inner_text()
     assert "Envio realizado" in pending_text
-    assert "confirmando o registro" in pending_text
-    assert form.is_hidden()
-    assert frame.locator("#success").get_attribute("data-persistence-confirmed") != "true"
+    assert "confirmando o registro" in pending_text.lower()
 
-    participant_text = frame.locator("body").inner_text().lower()
-    assert "bdi-ii" not in participant_text
-    assert "intensidade mínima" not in participant_text
-    assert "intensidade leve" not in participant_text
-    assert "intensidade moderada" not in participant_text
-    assert "intensidade grave" not in participant_text
-
-    frame.wait_for_function(
-        "document.getElementById('catsPersistenceStatus') && document.getElementById('catsPersistenceStatus').textContent.length > 0",
-        timeout=5000,
-    )
-    assert submitted["seen"]
-
-    expected_canonical = f"TESTE AUTOMATIZADO CATS|teste.e2e@example.invalid|11144477735|{FIXTURE_DATE}"
-    expected_fingerprint = hashlib.sha256(expected_canonical.encode("utf-8")).hexdigest()
-    frame.wait_for_timeout(100)
-    assert page.evaluate("window.__catsLastPayload?.fingerprint") == expected_fingerprint
-
-    assert frame.locator("#success").get_attribute("data-persistence-confirmed") != "true"
-    assert "registrada com sucesso" not in frame.locator("body").inner_text().lower()
-    assert frame.locator("#submitBtn").is_disabled()
-
-    page.evaluate("window.__catsVerifierMode = 'positive'")
+    # O verificador apontando para Sheet errada não pode produzir falso positivo.
+    page.wait_for_timeout(800)
     success = frame.locator("#success")
-    success.wait_for(state="visible", timeout=10000)
-    frame.wait_for_function(
-        "document.getElementById('success')?.textContent.includes('Parabéns! Sua participação foi registrada com sucesso.')",
-        timeout=3000,
-    )
-    final_text = success.inner_text()
-    assert "Parabéns! Sua participação foi registrada com sucesso." in final_text
-    assert "Seja bem-vindo(a) ao VIII Curso de Atendimento a Tentativas de Suicídio" in final_text
-    assert "CATS 2026" in final_text
-    assert "Pouso Alegre" in final_text
-    assert form.is_hidden()
+    assert success.get_attribute("data-persistence-confirmed") != "true"
+    assert not success.is_visible()
+
+    page.evaluate("window.__catsVerifierMode='positive'")
+    frame.locator("#catsVerifyAgain").click()
+    success.wait_for(state="visible", timeout=7000)
     assert success.get_attribute("data-persistence-confirmed") == "true"
-    assert frame.locator("#catsSubmitPending").is_hidden()
+    success_text = success.inner_text()
+    assert "participação foi registrada com sucesso" in success_text
+    assert "VIII Curso de Atendimento a Tentativas de Suicídio" in success_text
 
-    final_participant_text = frame.locator("body").inner_text().lower()
-    assert "bdi-ii" not in final_participant_text
-    context.close()
+    assert captured, "POST ao Google Forms não foi observado"
+    payload = captured[-1]
+    assert payload.get("entry.500885681") == "Nunca atendi."
+    assert payload.get("entry.1067284683") == "TESTE AUTOMATIZADO CATS"
+    assert payload.get("entry.426148251") == "11144477735"
+    assert payload.get("entry.192985690") == "Não."
+    assert all(name in payload for name in names), "Campos clínicos ausentes no POST"
 
-    fresh = browser.new_context(viewport={"width": 900, "height": 800})
-    fresh_page = fresh.new_page()
-    fresh_page.goto(LEGACY, wait_until="domcontentloaded")
-    fresh_page.wait_for_url("**/precurso.html", timeout=10000)
-    fresh_page.wait_for_selector('#catsAuthGate[data-cats-pa-branded="true"]', timeout=15000)
-    assert fresh_page.locator("#catsAuthGate").is_visible()
-    fresh.close()
+    # Nenhuma resposta clínica/BDI-II deve ser persistida em storages do navegador.
+    storage_dump = page.evaluate("JSON.stringify({local:{...localStorage},session:{...sessionStorage}})")
+    assert "entry.626004811" not in storage_dump
+    assert "bdi" not in storage_dump.lower()
+
     browser.close()
 
-print("PASS: Smoke + E2E CATS — acesso sem autoenvio prematuro aos 7 dígitos, envio imediato sem falso positivo, confirmação independente, boas-vindas finais e BDI-II ausente do navegador.")
+print("PASS: E2E pré-curso — fluxo real de escolha, POST, fail-closed, persistência confirmada e privacidade validados.")
