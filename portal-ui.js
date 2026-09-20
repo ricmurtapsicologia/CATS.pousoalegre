@@ -31,41 +31,10 @@
     heroText.insertAdjacentElement('afterend',wrap);
   };
 
-  const applyCourseCardImages=()=>{
-    const images={
-      '5':{
-        src:'https://i.pinimg.com/736x/aa/88/6a/aa886a6b4cf5d8b3d7148fe09c999113.jpg',
-        alt:'Abordagem Técnica: Comunicação Dissuasiva',
-        fit:'cover'
-      },
-      '6':{
-        src:'assets/abordagem-tatica-panorama.svg?v=20260920-1',
-        alt:'Abordagem Tática — fluxo panorâmico do Sistema ATS',
-        fit:'contain',
-        background:'#ffffff'
-      }
-    };
-
-    Object.entries(images).forEach(([module,config])=>{
-      const card=document.querySelector(`.card[data-module="${module}"]`);
-      const img=card?.querySelector('.media img');
-      if(!img)return;
-      img.src=config.src;
-      img.alt=config.alt;
-      img.style.objectFit=config.fit;
-      if(config.background)img.style.background=config.background;
-    });
-  };
-
-  const enhancePage=()=>{
-    injectManualCta();
-    applyCourseCardImages();
-  };
-
   if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',enhancePage,{once:true});
+    document.addEventListener('DOMContentLoaded',injectManualCta,{once:true});
   }else{
-    enhancePage();
+    injectManualCta();
   }
 
   load('https://ricmurtapsicologia.github.io/Curso-ATS/access-2026.js?v=20260914-4','access-2026.js');
