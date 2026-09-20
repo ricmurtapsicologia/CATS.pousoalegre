@@ -3,14 +3,13 @@ from __future__ import annotations
 import json
 import sys
 import time
-from urllib.parse import urlparse
 
 import requests
 from playwright.sync_api import sync_playwright
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8765/"
 
-DECKS = {
+SOURCE_IDS = {
     "1": "1ZYiAFZwrDE2i2zRpMg714cBqC4R-2OeH",
     "2": "19n4VMAyYdaCjbYYIH8eZB3duNC1FkSF7",
     "3": "1GuEU435vhorxZt42dAEurX2mVopFpFEz",
@@ -21,14 +20,12 @@ DECKS = {
     "8": "1lVMb2TMiex4Z48_y1S2GA_mnTTgogS6u",
 }
 
-DENIAL_MARKERS = (
-    "you need access",
-    "request access",
-    "access denied",
-    "você precisa de acesso",
-    "solicitar acesso",
-    "acesso negado",
-)
+AUDIO_SAMPLES = [
+    "https://ricmurtapsicologia.github.io/Podcast-ATS-CBMMG/assets/audio/serie-1/a1-001-n3.mp3?v=n3-ptbr-native-20260901",
+    "https://ricmurtapsicologia.github.io/Podcast-ATS-CBMMG/assets/audio/serie-1/a1-021-n3.mp3?v=n3-ptbr-native-20260901",
+    "https://ricmurtapsicologia.github.io/Podcast-ATS-CBMMG/assets/audio/serie-2/a2-000-n3.mp3?v=n3-cast-20260901c",
+    "https://ricmurtapsicologia.github.io/Podcast-ATS-CBMMG/assets/audio/serie-2/a2-013-n3.mp3?v=n3-cast-20260901c",
+]
 
 
 def auth_payload() -> str:
@@ -41,31 +38,22 @@ def auth_payload() -> str:
     })
 
 
-def assert_anonymous_drive_access() -> None:
-    session = requests.Session()
-    session.headers.update({
-        "User-Agent": "Mozilla/5.0 CATS-E2E/2026",
-        "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.7",
-    })
-    failures = []
-    for module, file_id in DECKS.items():
-        url = f"https://drive.google.com/file/d/{file_id}/preview"
-        try:
-            response = session.get(url, timeout=25, allow_redirects=True)
-        except Exception as exc:
-            failures.append(f"Aula {module}: erro de rede {exc!r}")
-            continue
-        final_host = urlparse(response.url).netloc.lower()
-        text = response.text[:300000].lower()
-        if response.status_code >= 400:
-            failures.append(f"Aula {module}: HTTP {response.status_code}")
-        if "accounts.google.com" in final_host:
-            failures.append(f"Aula {module}: redirecionou para login ({response.url})")
-        marker = next((m for m in DENIAL_MARKERS if m in text), None)
-        if marker:
-            failures.append(f"Aula {module}: bloqueio detectado ({marker})")
-    if failures:
-        raise AssertionError("\n".join(failures))
+def assert_local_lesson_assets() -> None:
+    for module in range(1, 9):
+        url = f"{BASE.rstrip('/')}/assets/lessons/aula-0{module}.pdf"
+        response = requests.get(url, timeout=15)
+        assert response.status_code == 200, (module, response.status_code)
+        assert response.content[:5] == b"%PDF-", f"Aula {module}: visualização não é PDF válido"
+        assert len(response.content) > 10000, f"Aula {module}: PDF inesperadamente pequeno"
+
+
+def assert_audio_sources() -> None:
+    headers = {"Range": "bytes=0-2047", "User-Agent": "CATS-E2E/2026"}
+    for url in AUDIO_SAMPLES:
+        response = requests.get(url, headers=headers, timeout=20, allow_redirects=True)
+        assert response.status_code in (200, 206), (url, response.status_code)
+        content_type = (response.headers.get("content-type") or "").lower()
+        assert "audio" in content_type or "mpeg" in content_type or response.content[:3] == b"ID3", (url, content_type)
 
 
 def install_session(context) -> None:
@@ -80,11 +68,14 @@ def neutralize_external_noise(page) -> None:
     page.route("**/Curso-ATS/access-2026.js*", lambda route: route.fulfill(
         status=200, content_type="application/javascript", body="/* E2E stub */"
     ))
-    page.route("https://drive.google.com/file/d/**/preview*", lambda route: route.fulfill(
-        status=200, content_type="text/html", body="<!doctype html><title>Drive preview E2E</title><p>preview</p>"
-    ))
     page.route("**/youtube.com/embed/**", lambda route: route.fulfill(
         status=200, content_type="text/html", body="<!doctype html><title>YouTube E2E</title>"
+    ))
+    page.route("**/Podcast-ATS-CBMMG/assets/audio/**", lambda route: route.fulfill(
+        status=206,
+        headers={"Content-Range": "bytes 0-2/3", "Accept-Ranges": "bytes"},
+        content_type="audio/mpeg",
+        body=b"ID3",
     ))
     page.route("**/fonts.googleapis.com/**", lambda route: route.abort())
     page.route("**/fonts.gstatic.com/**", lambda route: route.abort())
@@ -104,32 +95,29 @@ def assert_portal(viewport: dict[str, int]) -> None:
         neutralize_external_noise(page)
         page.goto(BASE, wait_until="domcontentloaded")
         page.wait_for_selector("#aulas", timeout=15000)
-        page.wait_for_timeout(800)
+        page.wait_for_function("() => window.CATSPousoAlegreInlineDeckMode?.viewer === 'local-pdf'", timeout=15000)
 
         assert page.locator("#catsAuthGate").is_hidden()
         deck_map = page.evaluate("window.CATSPousoAlegreOriginalDecks")
-        assert set(deck_map.keys()) == set(DECKS.keys()), deck_map
+        assert set(deck_map.keys()) == set(SOURCE_IDS.keys()), deck_map
 
-        for module, file_id in DECKS.items():
+        for module, source_id in SOURCE_IDS.items():
             card = page.locator(f'#cards article[data-module="{module}"]')
             assert card.count() == 1, f"Aula {module} ausente"
-            link = card.locator("a.open-slide")
-            assert link.count() == 1, f"Aula {module} sem Acessar aula"
+            link = card.locator("a.open-slide[data-internal-lesson='true']")
+            assert link.count() == 1, f"Aula {module} sem Acessar aula interno"
             assert link.get_attribute("target") is None, f"Aula {module} abre nova aba"
             assert link.get_attribute("download") is None, f"Aula {module} oferece download"
-            assert link.get_attribute("data-slide-id") == file_id
+            assert link.get_attribute("data-slide-id") == source_id
+            assert link.get_attribute("data-slide-url") == f"assets/lessons/aula-0{module}.pdf"
 
             link.click()
             viewer = page.locator("#slidesViewer")
             assert viewer.get_attribute("open") is not None, f"Aula {module}: modal não abriu"
             frame = page.locator("#slidesFrame")
             src = frame.get_attribute("src") or ""
-            expected = f"https://drive.google.com/file/d/{file_id}/preview"
-            assert src == expected, (module, src, expected)
-            allow = frame.get_attribute("allow") or ""
-            assert "autoplay" in allow
-            assert "fullscreen" in allow
-            assert "encrypted-media" in allow
+            assert f"/assets/lessons/aula-0{module}.pdf" in src, (module, src)
+            assert "drive.google.com" not in src
             assert page.locator("#openExternal").count() == 0
             assert page.locator("#downloadOriginalPptx").count() == 0
             page.locator("#closeX").click()
@@ -147,10 +135,30 @@ def assert_portal(viewport: dict[str, int]) -> None:
         assert page.locator('#videosToggle').count() == 0
         assert page.locator('#videos [hidden]').count() == 0
 
-        media_mode = page.evaluate("window.CATSPousoAlegreInlineDeckMode")
-        assert media_mode["inline"] is True
-        assert media_mode["externalNavigation"] is False
-        assert media_mode["downloadButton"] is False
+        page.wait_for_selector('#catsAudioLibrary[data-ready="true"]', timeout=15000)
+        assert page.locator('#catsAudioLibrary audio').count() == 35
+        assert page.locator('#catsAudioLibrary a[download]').count() == 0
+        audio_attrs = page.locator('#catsAudioLibrary audio').evaluate_all(
+            "els => els.map(e => ({controls:e.hasAttribute('controls'), list:e.getAttribute('controlsList')||'', remote:e.hasAttribute('disableRemotePlayback')}))"
+        )
+        assert all(a["controls"] for a in audio_attrs)
+        assert all("nodownload" in a["list"] for a in audio_attrs)
+        assert all("noremoteplayback" in a["list"] for a in audio_attrs)
+        assert all(a["remote"] for a in audio_attrs)
+
+        project_link = page.locator('article[data-module="proj"] .actions a').first
+        assert project_link.get_attribute("href") == "#catsAudioLibrary"
+        assert project_link.get_attribute("target") is None
+
+        deck_mode = page.evaluate("window.CATSPousoAlegreInlineDeckMode")
+        assert deck_mode["inline"] is True
+        assert deck_mode["externalNavigation"] is False
+        assert deck_mode["viewer"] == "local-pdf"
+        audio_mode = page.evaluate("window.CATSPousoAlegreAudioMode")
+        assert audio_mode["inline"] is True
+        assert audio_mode["externalNavigation"] is False
+        assert audio_mode["downloadOffered"] is False
+        assert audio_mode["episodes"] == 35
 
         assert page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2")
         context.close()
@@ -158,7 +166,8 @@ def assert_portal(viewport: dict[str, int]) -> None:
 
 
 if __name__ == "__main__":
-    assert_anonymous_drive_access()
+    assert_local_lesson_assets()
+    assert_audio_sources()
     assert_portal({"width": 1280, "height": 900})
     assert_portal({"width": 390, "height": 844})
-    print("PASS: 8 aulas inline, links canônicos, imagens 5/6 atualizadas, vídeos inline e Drive acessível anonimamente.")
+    print("PASS: 8 aulas locais inline, imagens 5/6, 6 vídeos e 35 áudios inline; sem navegação externa nem download oferecido de áudio.")
