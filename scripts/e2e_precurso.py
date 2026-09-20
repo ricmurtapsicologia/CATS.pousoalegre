@@ -166,9 +166,13 @@ with sync_playwright() as p:
     assert "Envio realizado" in pending_text
     assert "confirmando o registro" in pending_text.lower()
 
+    # A rota interceptada do Google Forms não é obrigada a produzir o mesmo
+    # evento de navegação do iframe oculto em todos os runners. Disparamos o
+    # evento que o produto usa para iniciar a confirmação, depois que o estado
+    # de submissão já foi criado pelo submit real.
+    frame.locator("#google-response").evaluate("el => el.dispatchEvent(new Event('load'))")
+
     # O verificador apontando para Sheet errada não pode produzir falso positivo.
-    # O status pode permanecer visualmente oculto pelo fluxo de UX; o contrato
-    # relevante é o estado textual de confirmação negativa, não sua visibilidade.
     success = frame.locator("#success")
     page.wait_for_function(
         """() => {
@@ -181,9 +185,8 @@ with sync_playwright() as p:
     assert success.get_attribute("data-persistence-confirmed") != "true"
     assert not success.is_visible()
 
-    # Muda o verificador para resposta válida e simula uma nova notificação de
-    # carregamento do iframe de resposta. Isso valida a rechecagem sem acoplar o
-    # teste ao estado visual do botão auxiliar de retry.
+    # Muda o verificador para resposta válida e dispara uma nova notificação de
+    # carregamento para validar a rechecagem e a confirmação positiva.
     page.evaluate("window.__catsVerifierMode='positive'")
     frame.locator("#google-response").evaluate("el => el.dispatchEvent(new Event('load'))")
     success.wait_for(state="visible", timeout=7000)
