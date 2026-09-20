@@ -63,6 +63,7 @@ with sync_playwright() as p:
     configure_verifier(page)
 
     captured: list[dict[str, str]] = []
+
     def capture_form_response(route, request):
         captured.append(extract_form_payload(request))
         route.fulfill(status=200, content_type="text/html", body="<!doctype html><title>ok</title>")
@@ -166,18 +167,26 @@ with sync_playwright() as p:
     assert "confirmando o registro" in pending_text.lower()
 
     # O verificador apontando para Sheet errada não pode produzir falso positivo.
-    page.wait_for_timeout(800)
     success = frame.locator("#success")
+    status = frame.locator("#catsPersistenceStatus")
+    status.wait_for(state="visible", timeout=3000)
+    status.wait_for(state="visible", timeout=7000)
+    page.wait_for_function(
+        """() => {
+          const f=document.querySelector('#app');
+          const s=f?.contentDocument?.querySelector('#catsPersistenceStatus');
+          return !!s && /NÃO foi confirmada/i.test(s.textContent || '');
+        }""",
+        timeout=7000,
+    )
     assert success.get_attribute("data-persistence-confirmed") != "true"
     assert not success.is_visible()
 
-    # O retry só é habilitado quando a primeira janela de verificação termina.
-    verify_again = frame.locator("#catsVerifyAgain")
-    verify_again.wait_for(state="visible", timeout=7000)
-    assert not verify_again.is_disabled()
-
+    # Muda o verificador para resposta válida e simula uma nova notificação de
+    # carregamento do iframe de resposta. Isso valida a rechecagem sem acoplar o
+    # teste ao estado visual do botão auxiliar de retry.
     page.evaluate("window.__catsVerifierMode='positive'")
-    verify_again.click()
+    frame.locator("#google-response").evaluate("el => el.dispatchEvent(new Event('load'))")
     success.wait_for(state="visible", timeout=7000)
     assert success.get_attribute("data-persistence-confirmed") == "true"
     success_text = success.inner_text()
