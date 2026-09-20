@@ -111,6 +111,14 @@ def assert_portal(viewport: dict[str, int]) -> None:
             assert link.get_attribute("data-slide-id") == source_id
             assert link.get_attribute("data-slide-url") == f"assets/lessons/aula-0{module}.pdf"
 
+            # No mobile o conteúdo do card é intencionalmente recolhido; simula o
+            # toque real do aluno em "Ver detalhes" antes de "Acessar aula".
+            if not link.is_visible():
+                toggle = card.locator(".lesson-toggle")
+                assert toggle.count() == 1, f"Aula {module}: conteúdo oculto sem controle de expansão"
+                toggle.click()
+                link.wait_for(state="visible", timeout=3000)
+
             link.click()
             viewer = page.locator("#slidesViewer")
             assert viewer.get_attribute("open") is not None, f"Aula {module}: modal não abriu"
