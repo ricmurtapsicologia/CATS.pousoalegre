@@ -10,7 +10,7 @@ def require(ok: bool, message: str) -> None:
     if not ok:
         errors.append(message)
 
-# Este arquivo passou a ser somente um gate de drift. Nenhuma alteração é feita.
+# Este arquivo é somente um gate de drift. Nenhuma alteração é feita.
 require("G-38D052F915" not in PAGE, "tag GA4 legada ainda presente")
 require('meta name="ric-analytics-ga" content="G-N1GEBDNZ8B"' in PAGE,
         "propriedade GA4 canônica ausente")
@@ -25,11 +25,19 @@ require('media="print" onload="this.media=\'all\'"' in PAGE,
 require('rel="preconnect" href="https://cdn.jsdelivr.net"' in PAGE,
         "preconnect do CDN de ícones ausente")
 
-# Os seis vídeos devem ficar deferred: nenhum YouTube oculto pode iniciar download
-# antes de o usuário abrir a respectiva pasta.
-youtube_src = re.findall(r'<iframe\s+class="video-embed"[^>]*\bsrc="https://www\.youtube\.com/embed/', PAGE, re.I)
-youtube_deferred = re.findall(r'<iframe\s+class="video-embed"[^>]*\bdata-src="https://www\.youtube\.com/embed/', PAGE, re.I)
-require(not youtube_src, "iframe de YouTube voltou a carregar eager/lazy via src")
+# data-src contém a sequência "src"; por isso o detector de src real precisa
+# excluir explicitamente o prefixo data-. Assim o gate não produz falso positivo.
+youtube_src = re.findall(
+    r'<iframe\s+class="video-embed"[^>]*(?<!data-)\bsrc="https://www\.youtube\.com/embed/',
+    PAGE,
+    re.I,
+)
+youtube_deferred = re.findall(
+    r'<iframe\s+class="video-embed"[^>]*\bdata-src="https://www\.youtube\.com/embed/',
+    PAGE,
+    re.I,
+)
+require(not youtube_src, "iframe de YouTube voltou a carregar via src")
 require(len(youtube_deferred) == 6, f"esperados 6 vídeos deferred; encontrados {len(youtube_deferred)}")
 
 if errors:
