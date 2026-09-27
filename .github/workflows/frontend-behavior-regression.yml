@@ -1,0 +1,56 @@
+name: CATS Pouso Alegre — Frontend Behavior Regression
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'portal-ui.js'
+      - 'cats-auth.js'
+      - 'presentation-originals.js'
+      - 'index.html'
+      - 'scripts/e2e_frontend_behavior.py'
+      - '.github/workflows/frontend-behavior-regression.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'portal-ui.js'
+      - 'cats-auth.js'
+      - 'presentation-originals.js'
+      - 'index.html'
+      - 'scripts/e2e_frontend_behavior.py'
+      - '.github/workflows/frontend-behavior-regression.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  frontend-behavior:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Instalar Playwright
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
+
+      - name: Servir candidato localmente
+        run: |
+          set -euo pipefail
+          python -m http.server 8765 --bind 127.0.0.1 > /tmp/cats-frontend-http.log 2>&1 &
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:8765/ -o /tmp/cats-frontend-index.html; then exit 0; fi
+            sleep 0.5
+          done
+          cat /tmp/cats-frontend-http.log
+          exit 1
+
+      - name: E2E — matrícula e vídeos
+        run: python scripts/e2e_frontend_behavior.py http://127.0.0.1:8765/
