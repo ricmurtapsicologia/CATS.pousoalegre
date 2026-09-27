@@ -20,21 +20,19 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
-      - name: Materializar estado canônico atual
+      - name: Materializar correção canônica do pré-curso
         run: |
           set -euo pipefail
-          python scripts/finalize_theory_surface.py
-          python scripts/performance_hotfix.py
           python scripts/precurso_submission_hardening.py
       - name: Commitar somente o estado materializado
         run: |
           set -euo pipefail
-          if git diff --quiet -- index.html precurso.html legacy.html README.md; then
+          if git diff --quiet -- precurso.html legacy.html; then
             echo 'Nenhuma materialização necessária.'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add index.html precurso.html legacy.html README.md
-          git commit -m 'chore: materialize canonical CATS source before hardening'
+          git add precurso.html legacy.html
+          git commit -m 'fix: materialize canonical CPF submission contract'
           git push origin HEAD:hardening/release-gate-20260927
