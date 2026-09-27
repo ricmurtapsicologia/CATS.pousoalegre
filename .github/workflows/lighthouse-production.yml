@@ -89,31 +89,44 @@ jobs:
             rm -f "$file"
           done
 
-      - name: Executar Lighthouse no candidato
+      - name: Executar Lighthouse 3x no candidato
         env:
           TARGET_PATH: ${{ matrix.path }}
         run: |
           set -euo pipefail
-          lighthouse "http://127.0.0.1:8765${TARGET_PATH}" \
-            --chrome-flags='--headless --no-sandbox --disable-gpu' \
-            --only-categories=performance,accessibility,best-practices,seo \
-            --output=json --output-path=lighthouse.json --quiet
-          test -s lighthouse.json
+          for run in 1 2 3; do
+            lighthouse "http://127.0.0.1:8765${TARGET_PATH}" \
+              --chrome-flags='--headless --no-sandbox --disable-gpu' \
+              --only-categories=performance,accessibility,best-practices,seo \
+              --output=json --output-path="lighthouse-${run}.json" --quiet
+            test -s "lighthouse-${run}.json"
+          done
 
-      - name: Resumo, achados e gate mínimo
+      - name: Mediana, achados e gate mínimo
         run: |
           node <<'NODE'
           const fs=require('fs');
-          const r=JSON.parse(fs.readFileSync('lighthouse.json','utf8'));
-          console.log('LIGHTHOUSE_SCORES');
+          const reports=[1,2,3].map(i=>JSON.parse(fs.readFileSync(`lighthouse-${i}.json`,'utf8')));
+          const keys=['performance','accessibility','best-practices','seo'];
+          const scoreOf=(r,k)=>Math.round(r.categories[k].score*100);
+          const median=values=>[...values].sort((a,b)=>a-b)[1];
           const scores={};
-          for (const [k,v] of Object.entries(r.categories)) {
-            scores[k]=Math.round(v.score*100);
+          console.log('LIGHTHOUSE_RUNS');
+          reports.forEach((r,i)=>console.log(`run${i+1} `+keys.map(k=>`${k}=${scoreOf(r,k)}`).join(' ')));
+          console.log('LIGHTHOUSE_MEDIAN_SCORES');
+          for(const k of keys){
+            scores[k]=median(reports.map(r=>scoreOf(r,k)));
             console.log(`${k}=${scores[k]}`);
           }
+
+          // Exibe os achados da execução cuja performance representa a mediana,
+          // evitando que um runner isoladamente lento distorça o diagnóstico.
+          const ranked=reports.map((r,i)=>({r,i,perf:scoreOf(r,'performance')})).sort((a,b)=>a.perf-b.perf);
+          const representative=ranked[1];
+          console.log(`LIGHTHOUSE_REPRESENTATIVE_RUN=${representative.i+1}`);
           console.log('LIGHTHOUSE_FINDINGS');
           const rows=[];
-          for (const [id,a] of Object.entries(r.audits)) {
+          for (const [id,a] of Object.entries(representative.r.audits)) {
             if (a.scoreDisplayMode==='notApplicable' || a.score===null || a.score===1) continue;
             const impact=(a.details&&typeof a.details.overallSavingsMs==='number')?a.details.overallSavingsMs:0;
             rows.push({id,score:a.score,title:a.title,display:a.displayValue||'',impact});
@@ -121,7 +134,7 @@ jobs:
           rows.sort((a,b)=>(a.score??1)-(b.score??1)||b.impact-a.impact);
           for (const x of rows.slice(0,40)) console.log(JSON.stringify(x));
 
-          // SEO é apenas informativo: ambas as superfícies são intencionalmente noindex.
+          // SEO é informativo: ambas as superfícies são intencionalmente noindex.
           const minimum={performance:70,accessibility:90,'best-practices':90};
           const failed=Object.entries(minimum).filter(([k,min]) => (scores[k]??0) < min);
           if (failed.length) {
@@ -135,7 +148,7 @@ jobs:
         if: always()
         with:
           name: lighthouse-${{ matrix.slug }}
-          path: lighthouse.json
+          path: lighthouse-*.json
           if-no-files-found: error
           retention-days: 14
 
@@ -143,28 +156,47 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - name: Aguardar publicação do mesmo commit
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Aguardar publicação desta exata revisão
+        env:
+          BASE: https://ricmurtapsicologia.github.io/CATS.pousoalegre
         run: |
           set -euo pipefail
-          BASE='https://ricmurtapsicologia.github.io/CATS.pousoalegre'
-          for i in {1..30}; do
-            if curl -fsSL --max-time 20 "$BASE/" -o /tmp/prod-home.html && grep -q 'VIII CATS 2026' /tmp/prod-home.html; then
-              exit 0
+          local_index="$(sha256sum index.html | awk '{print $1}')"
+          local_pre="$(sha256sum precurso.html | awk '{print $1}')"
+          echo "local index=$local_index"
+          echo "local precurso=$local_pre"
+
+          for i in {1..36}; do
+            if curl -fsSL --max-time 20 "$BASE/?sha=$GITHUB_SHA" -o /tmp/prod-home.html \
+              && curl -fsSL --max-time 20 "$BASE/precurso.html?sha=$GITHUB_SHA" -o /tmp/prod-precurso.html; then
+              remote_index="$(sha256sum /tmp/prod-home.html | awk '{print $1}')"
+              remote_pre="$(sha256sum /tmp/prod-precurso.html | awk '{print $1}')"
+              if [ "$remote_index" = "$local_index" ] && [ "$remote_pre" = "$local_pre" ]; then
+                echo "PRODUCTION_REVISION_MATCH $GITHUB_SHA"
+                exit 0
+              fi
+              echo "Ainda aguardando revisão: tentativa $i; index=$remote_index precurso=$remote_pre"
             fi
             sleep 10
           done
+          echo 'A produção não convergiu para os arquivos deste commit dentro da janela.'
           exit 1
+
       - name: Smoke de produção — portal e 8 aulas
         run: |
           set -euo pipefail
           BASE='https://ricmurtapsicologia.github.io/CATS.pousoalegre'
-          curl -fsSL --max-time 20 "$BASE/presentation-originals.js" -o /tmp/prod-presentation.js
+          curl -fsSL --max-time 20 "$BASE/presentation-originals.js?sha=$GITHUB_SHA" -o /tmp/prod-presentation.js
           grep -q "viewer:'local-pdf'" /tmp/prod-presentation.js
           for n in 01 02 03 04 05 06 07 08; do
             file="$(mktemp)"
-            curl -fsSL --max-time 30 "$BASE/assets/lessons/aula-$n.pdf" -o "$file"
+            curl -fsSL --max-time 30 "$BASE/assets/lessons/aula-$n.pdf?sha=$GITHUB_SHA" -o "$file"
             test "$(head -c 5 "$file")" = '%PDF-'
             test "$(wc -c < "$file")" -gt 10000
             rm -f "$file"
           done
-          echo 'PRODUCTION_SMOKE_PASS'
+          echo 'PRODUCTION_SMOKE_PASS_EXACT_REVISION'
