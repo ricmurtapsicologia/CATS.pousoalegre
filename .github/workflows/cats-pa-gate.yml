@@ -1,38 +1,132 @@
-name: VIII CATS Pouso Alegre — Hardening Materialization
+name: VIII CATS Pouso Alegre — Release Gate
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/cats-pa-gate.yml'
+      - '.github/workflows/lighthouse-production.yml'
+      - 'index.html'
+      - 'precurso.html'
+      - 'legacy.html'
+      - 'persistence-config.js'
+      - 'apps-script/CATS_PersistenceVerifier.gs'
+      - 'cats-auth.js'
+      - 'cats-auth.css'
+      - 'portal-ui.css'
+      - 'portal-ui.js'
+      - 'portal-ui-core.js'
+      - 'presentation-originals.js'
+      - 'assets/lessons/**'
+      - 'scripts/**'
   push:
-    branches:
-      - hardening/release-gate-20260927
+    branches: [main]
+    paths:
+      - '.github/workflows/cats-pa-gate.yml'
+      - '.github/workflows/lighthouse-production.yml'
+      - 'index.html'
+      - 'precurso.html'
+      - 'legacy.html'
+      - 'persistence-config.js'
+      - 'apps-script/CATS_PersistenceVerifier.gs'
+      - 'cats-auth.js'
+      - 'cats-auth.css'
+      - 'portal-ui.css'
+      - 'portal-ui.js'
+      - 'portal-ui-core.js'
+      - 'presentation-originals.js'
+      - 'assets/lessons/**'
+      - 'scripts/**'
+  workflow_dispatch: {}
+
+concurrency:
+  group: cats-pa-release-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  materialize:
-    if: github.actor != 'github-actions[bot]'
+  release-gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
         with:
-          persist-credentials: true
+          fetch-depth: 0
+          persist-credentials: false
+
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
-      - name: Materializar correção canônica do pré-curso
+
+      - name: 01 — Inventário da release
         run: |
           set -euo pipefail
-          python scripts/precurso_submission_hardening.py
-      - name: Commitar somente o estado materializado
+          test -s index.html
+          test -s precurso.html
+          test -s legacy.html
+          test -s presentation-originals.js
+          for n in 01 02 03 04 05 06 07 08; do test -s "assets/lessons/aula-$n.pdf"; done
+
+      - name: 02 — Fonte canônica já materializada
+        run: python scripts/finalize_theory_surface.py
+
+      - name: 03 — Performance já materializada
+        run: python scripts/performance_hotfix.py
+
+      - name: 04 — Hardening do pré-curso já materializado
+        run: python scripts/precurso_submission_hardening.py
+
+      - name: 05 — Provar que os validadores não alteraram a árvore
         run: |
           set -euo pipefail
-          if git diff --quiet -- precurso.html legacy.html; then
-            echo 'Nenhuma materialização necessária.'
-            exit 0
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add precurso.html legacy.html
-          git commit -m 'fix: materialize canonical CPF submission contract'
-          git push origin HEAD:hardening/release-gate-20260927
+          git diff --exit-code
+          test -z "$(git status --porcelain)"
+
+      - name: 06 — Auditoria 30/30
+        run: python scripts/qa_30_30.py
+
+      - name: 07 — Auditoria 90/90
+        run: python scripts/qa_90_90.py
+
+      - name: 08 — Gates 6/6 do portal
+        run: python scripts/qa_6_6_portal.py
+
+      - name: 09 — Gates 6/6 do pré-curso
+        run: python scripts/qa_6_6_precurso.py
+
+      - name: 10 — QEP — 24 dimensões / 397 slots canônicos
+        run: python scripts/qep_precurso_gate.py
+
+      - name: 11 — Instalar dependências do smoke e E2E
+        run: |
+          pip install requests playwright
+          playwright install --with-deps chromium
+
+      - name: 12 — Servir exatamente o checkout testado
+        run: |
+          set -euo pipefail
+          python -m http.server 8765 --bind 127.0.0.1 > /tmp/cats-pa-http.log 2>&1 &
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:8765/ -o /tmp/cats-pa-home.html; then exit 0; fi
+            sleep 0.5
+          done
+          cat /tmp/cats-pa-http.log
+          exit 1
+
+      - name: 13 — Smoke operacional
+        run: python scripts/smoke_portal.py http://127.0.0.1:8765/
+
+      - name: 14 — E2E profundo do pré-curso
+        run: python scripts/e2e_precurso.py http://127.0.0.1:8765/
+
+      - name: 15 — E2E final — autenticação, 8 aulas, vídeos, áudio e mobile
+        run: python scripts/e2e_release.py http://127.0.0.1:8765/
+
+      - name: 16 — Árvore permanece imutável ao final
+        run: |
+          set -euo pipefail
+          git diff --exit-code
+          test -z "$(git status --porcelain)"
+          echo 'RELEASE_GATE_PASS_IMMUTABLE_SOURCE'
