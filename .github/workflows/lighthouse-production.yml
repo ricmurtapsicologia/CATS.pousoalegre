@@ -1,6 +1,22 @@
-name: Lighthouse — Produção
+name: Lighthouse — Release Candidate & Production Smoke
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/lighthouse-production.yml'
+      - 'index.html'
+      - 'precurso.html'
+      - 'legacy.html'
+      - 'persistence-config.js'
+      - 'cats-auth.js'
+      - 'cats-auth.css'
+      - 'portal-ui.js'
+      - 'portal-ui-core.js'
+      - 'portal-ui.css'
+      - 'presentation-originals.js'
+      - 'assets/lessons/**'
+      - 'scripts/**'
   push:
     branches: [main]
     paths:
@@ -16,27 +32,28 @@ on:
       - 'portal-ui.css'
       - 'presentation-originals.js'
       - 'assets/lessons/**'
-      - 'scripts/finalize_theory_surface.py'
-      - 'scripts/qa_6_6_portal.py'
-      - 'scripts/smoke_portal.py'
-      - 'scripts/e2e_release.py'
+      - 'scripts/**'
   workflow_dispatch: {}
 
 permissions:
   contents: read
 
 jobs:
-  lighthouse:
+  lighthouse-candidate:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
           - slug: cats-pouso-alegre
-            url: https://ricmurtapsicologia.github.io/CATS.pousoalegre/
+            path: /
           - slug: precurso
-            url: https://ricmurtapsicologia.github.io/CATS.pousoalegre/precurso.html
+            path: /precurso.html
     steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -44,39 +61,44 @@ jobs:
       - name: Instalar Lighthouse
         run: npm install --global lighthouse@12.8.2
 
-      - name: Aguardar página publicada
-        env:
-          TARGET_URL: ${{ matrix.url }}
+      - name: Servir exatamente o candidato versionado
         run: |
-          for i in {1..24}; do
-            if curl -fsSL --max-time 20 "$TARGET_URL" >/dev/null; then exit 0; fi
-            sleep 10
+          set -euo pipefail
+          python -m http.server 8765 --bind 127.0.0.1 > /tmp/cats-pa-lighthouse-http.log 2>&1 &
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:8765/ -o /tmp/cats-pa-index.html; then exit 0; fi
+            sleep 0.5
           done
+          cat /tmp/cats-pa-lighthouse-http.log
           exit 1
 
-      - name: Smoke de produção — portal e 8 aulas
+      - name: Smoke local — portal e 8 aulas
         if: matrix.slug == 'cats-pouso-alegre'
         run: |
           set -euo pipefail
-          BASE='https://ricmurtapsicologia.github.io/CATS.pousoalegre'
-          curl -fsSL --max-time 20 "$BASE/" | grep -q 'VIII CATS 2026'
-          curl -fsSL --max-time 20 "$BASE/presentation-originals.js" | grep -q "viewer:'local-pdf'"
+          BASE='http://127.0.0.1:8765'
+          curl -fsSL --max-time 20 "$BASE/" -o /tmp/cats-home.html
+          grep -q 'VIII CATS 2026' /tmp/cats-home.html
+          curl -fsSL --max-time 20 "$BASE/presentation-originals.js" -o /tmp/cats-presentation.js
+          grep -q "viewer:'local-pdf'" /tmp/cats-presentation.js
           for n in 01 02 03 04 05 06 07 08; do
             file="$(mktemp)"
             curl -fsSL --max-time 30 "$BASE/assets/lessons/aula-$n.pdf" -o "$file"
-            head -c 5 "$file" | grep -q '%PDF-'
+            test "$(head -c 5 "$file")" = '%PDF-'
             test "$(wc -c < "$file")" -gt 10000
             rm -f "$file"
           done
 
-      - name: Executar Lighthouse
+      - name: Executar Lighthouse no candidato
         env:
-          TARGET_URL: ${{ matrix.url }}
+          TARGET_PATH: ${{ matrix.path }}
         run: |
-          lighthouse "$TARGET_URL" \
+          set -euo pipefail
+          lighthouse "http://127.0.0.1:8765${TARGET_PATH}" \
             --chrome-flags='--headless --no-sandbox --disable-gpu' \
             --only-categories=performance,accessibility,best-practices,seo \
             --output=json --output-path=lighthouse.json --quiet
+          test -s lighthouse.json
 
       - name: Resumo, achados e gate mínimo
         run: |
@@ -99,7 +121,8 @@ jobs:
           rows.sort((a,b)=>(a.score??1)-(b.score??1)||b.impact-a.impact);
           for (const x of rows.slice(0,40)) console.log(JSON.stringify(x));
 
-          const minimum={performance:70,accessibility:90,'best-practices':90,seo:90};
+          // SEO é apenas informativo: ambas as superfícies são intencionalmente noindex.
+          const minimum={performance:70,accessibility:90,'best-practices':90};
           const failed=Object.entries(minimum).filter(([k,min]) => (scores[k]??0) < min);
           if (failed.length) {
             console.error('LIGHTHOUSE_GATE_FAIL', failed.map(([k,min])=>`${k}<${min}`).join(', '));
@@ -113,5 +136,35 @@ jobs:
         with:
           name: lighthouse-${{ matrix.slug }}
           path: lighthouse.json
-          if-no-files-found: ignore
-          retention-days: 7
+          if-no-files-found: error
+          retention-days: 14
+
+  production-smoke:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Aguardar publicação do mesmo commit
+        run: |
+          set -euo pipefail
+          BASE='https://ricmurtapsicologia.github.io/CATS.pousoalegre'
+          for i in {1..30}; do
+            if curl -fsSL --max-time 20 "$BASE/" -o /tmp/prod-home.html && grep -q 'VIII CATS 2026' /tmp/prod-home.html; then
+              exit 0
+            fi
+            sleep 10
+          done
+          exit 1
+      - name: Smoke de produção — portal e 8 aulas
+        run: |
+          set -euo pipefail
+          BASE='https://ricmurtapsicologia.github.io/CATS.pousoalegre'
+          curl -fsSL --max-time 20 "$BASE/presentation-originals.js" -o /tmp/prod-presentation.js
+          grep -q "viewer:'local-pdf'" /tmp/prod-presentation.js
+          for n in 01 02 03 04 05 06 07 08; do
+            file="$(mktemp)"
+            curl -fsSL --max-time 30 "$BASE/assets/lessons/aula-$n.pdf" -o "$file"
+            test "$(head -c 5 "$file")" = '%PDF-'
+            test "$(wc -c < "$file")" -gt 10000
+            rm -f "$file"
+          done
+          echo 'PRODUCTION_SMOKE_PASS'
