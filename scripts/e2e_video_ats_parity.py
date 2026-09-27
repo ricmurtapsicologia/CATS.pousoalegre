@@ -63,13 +63,16 @@ def assert_common(page) -> None:
     assert page.locator('#videos iframe').count() == 6
     assert page.locator('#videos [hidden]').count() == 0, "Há conteúdo de vídeo oculto"
 
+    # Performance r18 mantém o player visível, mas adia a navegação externa do
+    # iframe em data-src até a hidratação. O teste aceita src já hidratado ou o
+    # contrato deferred original, sem confundir ausência de src com perda do ID.
     ids = page.locator('#videos iframe').evaluate_all(
-        "els => els.map(e => (e.getAttribute('src') || '').split('/embed/')[1]?.split(/[?#]/)[0] || '')"
+        "els => els.map(e => ((e.getAttribute('src') || e.getAttribute('data-src') || '').split('/embed/')[1]?.split(/[?#]/)[0] || ''))"
     )
     assert ids == EXPECTED_IDS, ids
 
     attrs = page.locator('#videos iframe').evaluate_all(
-        "els => els.map(e => ({allow:e.getAttribute('allow')||'', fullscreen:e.hasAttribute('allowfullscreen'), loading:e.getAttribute('loading')}))"
+        "els => els.map(e => ({allow:e.getAttribute('allow')||'', fullscreen:e.hasAttribute('allowfullscreen'), loading:e.getAttribute('loading'), deferred:e.hasAttribute('data-src')}))"
     )
     for attrs_one in attrs:
         assert attrs_one["fullscreen"] is True
@@ -121,4 +124,4 @@ with sync_playwright() as p:
 
     browser.close()
 
-print("PASS: vídeos de Pouso Alegre em paridade funcional com ATS — 6 players inline, 16:9, sem pasta, 3 colunas desktop, 1 coluna mobile e permissões completas do YouTube.")
+print("PASS: vídeos de Pouso Alegre em paridade funcional com ATS — 6 players inline/deferred, 16:9, sem pasta, 3 colunas desktop, 1 coluna mobile e permissões completas do YouTube.")
