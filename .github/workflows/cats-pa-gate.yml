@@ -1,118 +1,40 @@
-name: VIII CATS Pouso Alegre — Release Gate
+name: VIII CATS Pouso Alegre — Hardening Materialization
 
 on:
   push:
-    branches: [main]
-    paths:
-      - '.github/workflows/cats-pa-gate.yml'
-      - 'index.html'
-      - 'precurso.html'
-      - 'legacy.html'
-      - 'persistence-config.js'
-      - 'apps-script/CATS_PersistenceVerifier.gs'
-      - 'cats-auth.js'
-      - 'cats-auth.css'
-      - 'portal-ui.css'
-      - 'portal-ui.js'
-      - 'portal-ui-core.js'
-      - 'presentation-originals.js'
-      - 'assets/lessons/**'
-      - 'scripts/finalize_theory_surface.py'
-      - 'scripts/performance_hotfix.py'
-      - 'scripts/precurso_submission_hardening.py'
-      - 'scripts/qep_precurso_gate.py'
-      - 'scripts/qa_30_30.py'
-      - 'scripts/qa_90_90.py'
-      - 'scripts/qa_6_6_precurso.py'
-      - 'scripts/qa_6_6_portal.py'
-      - 'scripts/smoke_portal.py'
-      - 'scripts/e2e_precurso.py'
-      - 'scripts/e2e_release.py'
-  workflow_dispatch: {}
-
-concurrency:
-  group: cats-pa-release-main
-  cancel-in-progress: true
+    branches:
+      - hardening/release-gate-20260927
 
 permissions:
   contents: write
 
 jobs:
-  release-gate:
+  materialize:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 0
           persist-credentials: true
-
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
-
-      - name: 01 — Inventário da release
+      - name: Materializar estado canônico atual
         run: |
           set -euo pipefail
-          test -s index.html
-          test -s precurso.html
-          test -s legacy.html
-          test -s presentation-originals.js
-          for n in 01 02 03 04 05 06 07 08; do test -s "assets/lessons/aula-$n.pdf"; done
-
-      - name: 02 — Saneamento canônico e remoção de legado concorrente
-        run: python scripts/finalize_theory_surface.py
-
-      - name: 03 — Hotfix persistente de performance
-        run: python scripts/performance_hotfix.py
-
-      - name: 04 — Hardening da persistência do pré-curso
-        run: python scripts/precurso_submission_hardening.py
-
-      - name: 05 — Auditoria 30/30
-        run: python scripts/qa_30_30.py
-
-      - name: 06 — Auditoria 90/90
-        run: python scripts/qa_90_90.py
-
-      - name: 07 — Gates 6/6 do portal
-        run: python scripts/qa_6_6_portal.py
-
-      - name: 08 — Gates 6/6 do pré-curso
-        run: python scripts/qa_6_6_precurso.py
-
-      - name: 09 — QEP — 24 dimensões / 397 slots canônicos
-        run: python scripts/qep_precurso_gate.py
-
-      - name: 10 — Instalar dependências do smoke e E2E
+          python scripts/finalize_theory_surface.py
+          python scripts/performance_hotfix.py
+          python scripts/precurso_submission_hardening.py
+      - name: Commitar somente o estado materializado
         run: |
-          pip install requests playwright
-          playwright install --with-deps chromium
-
-      - name: 11 — Servir release candidata
-        run: |
-          python -m http.server 8765 --bind 127.0.0.1 > /tmp/cats-pa-http.log 2>&1 &
-          for i in {1..30}; do curl -fsS http://127.0.0.1:8765/ >/dev/null && exit 0; sleep 0.5; done
-          cat /tmp/cats-pa-http.log
-          exit 1
-
-      - name: 12 — Smoke operacional
-        run: python scripts/smoke_portal.py http://127.0.0.1:8765/
-
-      - name: 13 — E2E profundo do pré-curso
-        run: python scripts/e2e_precurso.py http://127.0.0.1:8765/
-
-      - name: 14 — E2E final — autenticação, 8 aulas, vídeos, áudio e mobile
-        run: python scripts/e2e_release.py http://127.0.0.1:8765/
-
-      - name: 15 — Publicar artefatos saneados somente com todos os gates verdes
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+ricmurtapsicologia@users.noreply.github.com'
-          git add index.html precurso.html legacy.html README.md
-          if git diff --cached --quiet; then
-            echo 'Release já materializada; nenhuma alteração de artefato.'
-          else
-            git commit -m 'release: materializa CATS após 30/90/6 smoke e E2E'
-            git push origin HEAD:main
+          set -euo pipefail
+          if git diff --quiet -- index.html precurso.html legacy.html README.md; then
+            echo 'Nenhuma materialização necessária.'
+            exit 0
           fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html precurso.html legacy.html README.md
+          git commit -m 'chore: materialize canonical CATS source before hardening'
+          git push origin HEAD:hardening/release-gate-20260927
