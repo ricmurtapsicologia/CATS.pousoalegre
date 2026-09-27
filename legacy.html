@@ -465,6 +465,10 @@
       e.preventDefault();
       return;
     }
+    // O campo é mascarado apenas para UX. O contrato do Google Forms e da
+    // verificação de persistência usa CPF canônico com 11 dígitos.
+    const cpfField = $('#cpf');
+    if(cpfField) cpfField.value = cpfField.value.replace(/\D/g, '').slice(0, 11);
     submitted = true;
     $('#submitBtn').disabled = true;
     $('#submitBtn').textContent = 'Enviando...';
