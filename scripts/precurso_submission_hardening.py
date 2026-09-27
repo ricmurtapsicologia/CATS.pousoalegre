@@ -18,6 +18,18 @@ NEW_LEGACY = '''  $('#google-response').addEventListener('load', () => {
     $('#submitBtn').textContent = 'Confirmando gravação...';
   });'''
 
+CPF_SUBMIT_OLD = '''    submitted = true;
+    $('#submitBtn').disabled = true;
+    $('#submitBtn').textContent = 'Enviando...';'''
+
+CPF_SUBMIT_NEW = '''    // O campo é mascarado apenas para UX. O contrato do Google Forms e da
+    // verificação de persistência usa CPF canônico com 11 dígitos.
+    const cpfField = $('#cpf');
+    if(cpfField) cpfField.value = cpfField.value.replace(/\\D/g, '').slice(0, 11);
+    submitted = true;
+    $('#submitBtn').disabled = true;
+    $('#submitBtn').textContent = 'Enviando...';'''
+
 BUILD_OLD = '2026.09.18-r9-auto'
 BUILD_NEW = '2026.09.18-r10-persist'
 AUTH_JS_OLD = 'cats-auth.js?v=20260909-2'
@@ -35,6 +47,7 @@ def patch_once(text: str, old: str, new: str, label: str) -> str:
 
 legacy = LEGACY.read_text(encoding='utf-8')
 legacy = patch_once(legacy, OLD_LEGACY, NEW_LEGACY, 'legacy false-positive success')
+legacy = patch_once(legacy, CPF_SUBMIT_OLD, CPF_SUBMIT_NEW, 'canonical CPF before native POST')
 LEGACY.write_text(legacy, encoding='utf-8')
 
 pre = PRECURSO.read_text(encoding='utf-8')
@@ -59,10 +72,12 @@ if payload_new not in pre:
 
 PRECURSO.write_text(pre, encoding='utf-8')
 
-# Gates locais do hotfix: nenhuma confirmação visual baseada só em iframe-load.
+# Gates locais do hotfix: nenhuma confirmação visual baseada só em iframe-load e
+# o POST do CPF usa o mesmo contrato canônico de 11 dígitos da fingerprint.
 check_legacy = LEGACY.read_text(encoding='utf-8')
 check_pre = PRECURSO.read_text(encoding='utf-8')
 assert "$('#success').classList.add('show');\n    window.scrollTo" not in check_legacy
+assert "cpfField.value = cpfField.value.replace(/\\D/g, '').slice(0, 11);" in check_legacy
 assert "notifyEmail:true" in check_pre
 assert 'legacy.html?v=' + BUILD_NEW in check_pre
 assert AUTH_JS_NEW in check_pre
