@@ -1,5 +1,6 @@
 (()=>{
   "use strict";
+
   const load=(src,key)=>{
     if(document.querySelector(`script[src*="${key}"]`))return;
     const s=document.createElement('script');
@@ -9,6 +10,9 @@
   };
 
   const MANUAL_URL='https://manual-participante-cats-digital.vercel.app';
+  const digits=value=>String(value||'').replace(/\D/g,'');
+  let matriculaTimer=0;
+
   const injectManualCta=()=>{
     if(document.getElementById('manual-participante-cta'))return;
     const heroText=document.querySelector('.hero .hero-inner > div > p');
@@ -31,10 +35,68 @@
     heroText.insertAdjacentElement('afterend',wrap);
   };
 
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',injectManualCta,{once:true});
-  }else{
+  const bindFastMatriculaAccess=()=>{
+    const gate=document.getElementById('catsAuthGate');
+    const form=gate?.querySelector('#catsAuthForm');
+    const input=gate?.querySelector('#catsAuthInput');
+    if(!gate||!form||!input)return false;
+    if(input.dataset.catsFastMatricula==='1')return true;
+    input.dataset.catsFastMatricula='1';
+
+    input.addEventListener('input',()=>{
+      window.clearTimeout(matriculaTimer);
+      const current=digits(input.value);
+      if(current.length!==7)return;
+      matriculaTimer=window.setTimeout(()=>{
+        if(input.disabled)return;
+        const latest=digits(input.value);
+        if(latest!==current||latest.length!==7)return;
+        form.requestSubmit();
+      },550);
+    });
+    return true;
+  };
+
+  const installFastMatriculaAccess=()=>{
+    if(bindFastMatriculaAccess())return;
+    const observer=new MutationObserver(()=>{
+      if(!bindFastMatriculaAccess())return;
+      observer.disconnect();
+    });
+    observer.observe(document.documentElement,{childList:true,subtree:true});
+    window.setTimeout(()=>observer.disconnect(),10000);
+  };
+
+  const activateSupportVideos=()=>{
+    const frames=[...document.querySelectorAll('#videos iframe[data-src]')];
+    frames.forEach(frame=>{
+      const src=frame.dataset.src;
+      if(!src)return;
+      if(!frame.getAttribute('src'))frame.setAttribute('src',src);
+      frame.removeAttribute('data-src');
+    });
+    return frames.length>0;
+  };
+
+  const installVideoActivation=()=>{
+    activateSupportVideos();
+    const section=document.getElementById('videos');
+    if(!section)return;
+    const observer=new MutationObserver(()=>activateSupportVideos());
+    observer.observe(section,{childList:true,subtree:true,attributes:true,attributeFilter:['data-src']});
+    window.setTimeout(()=>observer.disconnect(),10000);
+  };
+
+  const initFrontendBehavior=()=>{
     injectManualCta();
+    installFastMatriculaAccess();
+    installVideoActivation();
+  };
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',initFrontendBehavior,{once:true});
+  }else{
+    initFrontendBehavior();
   }
 
   load('https://ricmurtapsicologia.github.io/Curso-ATS/access-2026.js?v=20260914-4','access-2026.js');
