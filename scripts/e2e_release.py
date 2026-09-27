@@ -58,9 +58,33 @@ def assert_gate(browser) -> None:
     page.wait_for_selector('#catsAuthGate[data-cats-pa-branded="true"]', timeout=15000)
     gate = page.locator("#catsAuthGate")
     assert gate.is_visible(), "Gate de acesso não está visível sem sessão"
+
+    # O núcleo compartilhado pode variar microcopy/estrutura interna. O contrato
+    # funcional é: gate CATS identificado, formulário único, credencial e submit.
+    assert gate.get_attribute("aria-label") == "Acesso ao VIII CATS 2026"
     text = gate.inner_text()
     assert "VIII CATS" in text and "Pouso Alegre" in text
-    assert "Acesso do aluno" in text
+    assert gate.locator("#catsAuthForm").count() == 1
+    assert gate.locator("#catsAuthInput").count() == 1
+    assert gate.locator("#catsAuthSubmit").count() == 1
+    help_text = gate.locator("#catsAuthHelp").inner_text()
+    assert "7 números" in help_text and "11 números" in help_text
+
+    # A página é estática: o conteúdo permanece no DOM por baixo do overlay.
+    # A garantia real da arquitetura atual é que o gate ocupa a viewport e recebe
+    # o hit-test antes do conteúdo, impedindo interação normal sem autenticação.
+    assert page.evaluate(
+        """() => {
+          const gate = document.getElementById('catsAuthGate');
+          if (!gate) return false;
+          const r = gate.getBoundingClientRect();
+          const center = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+          const coversViewport = r.left <= 1 && r.top <= 1 && r.right >= innerWidth - 1 && r.bottom >= innerHeight - 1;
+          const interceptsCenter = !!center && (center === gate || gate.contains(center));
+          const style = getComputedStyle(gate);
+          return coversViewport && interceptsCenter && style.pointerEvents !== 'none' && style.visibility !== 'hidden';
+        }"""
+    ), "Gate não cobre/intercepta a viewport antes da autenticação"
     context.close()
 
 
@@ -142,4 +166,4 @@ with sync_playwright() as p:
     assert_authenticated_portal(browser, {"width": 390, "height": 844})
     browser.close()
 
-print("PASS: E2E release — gate, 8/8 aulas locais, vídeos inline, áudio protegido por biblioteca e mobile sem regressão.")
+print("PASS: E2E release — gate funcional, 8/8 aulas locais, vídeos inline, áudio protegido por biblioteca e mobile sem regressão.")

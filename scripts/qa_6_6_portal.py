@@ -28,7 +28,7 @@ checks: list[tuple[str, bool, str]] = []
 def gate(name: str, ok: bool, evidence: str) -> None:
     checks.append((name, bool(ok), evidence))
 
-# 1 — Acesso autenticado e fail-closed.
+# 1 — Acesso autenticado e fail-closed na interface.
 gate(
     "Acesso autenticado",
     "cats_pa_auth_v1" in auth
@@ -36,7 +36,7 @@ gate(
     and "Acesso do aluno" in auth
     and "Curso-ATS/auth.js" in page
     and "noindex,nofollow,noarchive" in page,
-    "Sessão isolada, gate institucional e falha fechada.",
+    "Sessão isolada, gate institucional e falha fechada da interface.",
 )
 
 # 2 — Oito aulas integralmente locais e rastreáveis.
@@ -49,7 +49,7 @@ for module, source_id in LESSON_IDS.items():
     lesson_ok &= source_id in presentation and source_id in page
 
 gate(
-    "Aulas full sem dependência do Drive",
+    "Aulas locais e rastreáveis",
     lesson_ok
     and "docs.google.com/presentation/d/" not in page
     and "local-pdf" in presentation
@@ -57,7 +57,7 @@ gate(
     "8/8 PDFs locais válidos; Drive preservado apenas como rastreabilidade da fonte.",
 )
 
-# 3 — Política de mídia: assistir/ouvir, sem oferta de download.
+# 3 — Política de mídia: assistir/ouvir, sem oferta explícita de download.
 video_sources = re.findall(r'https://www\.youtube\.com/embed/[A-Za-z0-9_-]+', page)
 media_ok = (
     len(video_sources) == 6
@@ -68,14 +68,14 @@ media_ok = (
     and not re.search(r'<a\b[^>]*\bdownload\b[^>]*(?:mp3|m4a|aac|wav|ogg|mp4|webm)', page, re.I)
 )
 gate(
-    "Mídia liberada sem download exposto",
+    "Mídia sem download exposto",
     media_ok,
-    "6 vídeos inline, podcast acessível e política nodownload/noremoteplayback para mídia nativa.",
+    "6 vídeos deferred, podcast acessível e política nodownload/noremoteplayback para mídia nativa.",
 )
 
-# 4 — Resíduos, duplicidades e incongruências removidos.
+# 4 — Resíduos, duplicidades e incongruências removidos do arquivo versionado.
 gate(
-    "Superfície sem legado concorrente",
+    "Fonte materializada sem legado concorrente",
     "baseEmbed =" not in page
     and "viewUrl   =" not in page
     and "openExternal" not in page
@@ -84,7 +84,7 @@ gate(
     and "Recohecimento" not in page
     and "humanizada,técnicas" not in page
     and page.count("Podcast-ATS-CBMMG") == 1,
-    "Sem Google Slides concorrente, avisos obsoletos ou inconsistências editoriais conhecidas.",
+    "O próprio index versionado já está no estado canônico; o CI não precisa reescrevê-lo.",
 )
 
 # 5 — UX responsiva e acesso real ao conteúdo.
@@ -96,22 +96,36 @@ gate(
     and "closeOtherCourseCards" in portal_core
     and "presentation-originals.js" in portal
     and "prefers-reduced-motion:reduce" in (ROOT / "portal-ui.css").read_text(encoding="utf-8"),
-    "Skip link, modal rotulado, acordeão mobile e integração canônica do viewer.",
+    "Skip link, modal rotulado, acordeão mobile, reduced motion e viewer canônico.",
 )
 
-# 6 — Entrega cercada pelos gates solicitados.
-gate(
-    "Pipeline de entrega",
-    "qa_30_30.py" in workflow
+# 6 — O pipeline deve testar sem mutar/pushar a fonte e o Lighthouse deve rodar
+# sobre o checkout exato do candidato, com artefato obrigatório.
+pipeline_ok = (
+    "pull_request:" in workflow
+    and "branches: [main]" in workflow
+    and "contents: read" in workflow
+    and "persist-credentials: false" in workflow
+    and "git push" not in workflow
+    and "git commit" not in workflow
+    and "git diff --exit-code" in workflow
+    and "qa_30_30.py" in workflow
     and "qa_90_90.py" in workflow
     and "qa_6_6_portal.py" in workflow
     and "smoke_portal.py" in workflow
+    and "e2e_precurso.py" in workflow
     and "e2e_release.py" in workflow
-    and "name: Lighthouse — Produção" in lighthouse
-    and "presentation-originals.js" in lighthouse
-    and "assets/lessons/**" in lighthouse
-    and "LIGHTHOUSE_GATE_PASS" in lighthouse,
-    "30/30 + 90/90 + 6/6 + smoke + E2E + Lighthouse cobrem mudanças críticas.",
+    and "pull_request:" in lighthouse
+    and "lighthouse-candidate" in lighthouse
+    and "http://127.0.0.1:8765" in lighthouse
+    and "LIGHTHOUSE_GATE_PASS" in lighthouse
+    and "if-no-files-found: error" in lighthouse
+    and "curl -fsSL --max-time 20 \"$BASE/\" -o /tmp/cats-home.html" in lighthouse
+)
+gate(
+    "Pipeline de entrega verificável",
+    pipeline_ok,
+    "PR testa fonte imutável; release gate não escreve; Lighthouse audita o checkout exato e exige artefato.",
 )
 
 print("GATES_PORTAL_6_6")
